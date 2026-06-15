@@ -1,0 +1,70 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import * as Icons from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { NavItem } from "./nav-config";
+
+const GROUPS: NavItem["group"][] = ["Overview", "Engage", "Commerce", "Operations"];
+
+export function Sidebar({ items }: { items: NavItem[] }) {
+  const pathname = usePathname();
+
+  // Pick the single most-specific matching route (longest href prefix).
+  const activeHref = items
+    .filter((i) => pathname === i.href || pathname.startsWith(i.href + "/"))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+
+  return (
+    <aside className="hidden w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex">
+      <div className="flex items-center gap-2.5 px-5 py-5">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-merlot text-sm font-bold text-primary-foreground">
+          A
+        </span>
+        <div className="leading-tight">
+          <div className="text-sm font-semibold text-cream">Aeris Beaute</div>
+          <div className="text-[11px] text-taupe">Commerce Platform</div>
+        </div>
+      </div>
+
+      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-2">
+        {GROUPS.map((group) => {
+          const groupItems = items.filter((i) => i.group === group);
+          if (!groupItems.length) return null;
+          return (
+            <div key={group}>
+              <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-brown">
+                {group}
+              </p>
+              <div className="space-y-0.5">
+                {groupItems.map((item) => {
+                  const Icon = (Icons[item.icon as keyof typeof Icons] ??
+                    Icons.Circle) as Icons.LucideIcon;
+                  const active = item.href === activeHref;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
+                        active
+                          ? "bg-sidebar-active text-primary-foreground"
+                          : "text-sidebar-foreground/80 hover:bg-white/5 hover:text-cream",
+                      )}
+                    >
+                      <Icon size={17} strokeWidth={2} />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </nav>
+
+      <div className="px-4 py-3 text-[11px] text-brown">v0.1 · Internal use</div>
+    </aside>
+  );
+}

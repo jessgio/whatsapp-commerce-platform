@@ -1,0 +1,57 @@
+# Merlot — WhatsApp Commerce Platform
+
+Internal platform unifying **CRM + OMS + WMS** around **WhatsApp Business (Cloud API)**,
+with catalog/pricing push, Midtrans/Xendit payment links, Biteship 3PL shipping,
+role-based logins, and sales/CS dashboards. Built with Next.js (App Router) +
+Supabase + Tailwind, styled with the **Merlot Charm** palette.
+
+## Quick start
+
+```bash
+npm install
+npm run dev
+```
+
+Open http://localhost:3000. With no `.env.local`, the app runs in **demo mode** —
+pick a role on the login screen (Admin / Sales / CS / Warehouse) to explore the
+full portal with realistic sample data. All external integrations are mocked.
+
+## Modes
+
+| Mode | When | Data | Integrations |
+| --- | --- | --- | --- |
+| **Demo** | no Supabase env | in-memory sample data | mocked (logged) |
+| **Live** | Supabase env set | Postgres (RLS) | real API calls |
+
+Copy `.env.example` → `.env.local` and fill in credentials to go live.
+
+## Go live
+
+1. Create a Supabase project; set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+2. Apply schema: run `supabase/migrations/0001_schema.sql`, `0002_rls.sql`, `0003_functions.sql`.
+3. (Optional) Load scale test data: `supabase/seed.sql` (15,000 customers).
+4. Add WhatsApp Cloud API, payment, and Biteship credentials.
+5. Point provider webhooks at:
+   - WhatsApp: `/api/webhooks/whatsapp` (verify token = `WHATSAPP_WEBHOOK_VERIFY_TOKEN`)
+   - Payments: `/api/webhooks/payment`
+   - Shipping: `/api/webhooks/shipping`
+6. Deploy to Vercel.
+
+## Modules
+
+- **CRM** — customers keyed off `wa_id`, consent ledger, saved addresses (reused per order), segments, profiles.
+- **Inbox** — live WhatsApp conversations, assignment, 24h-window indicator, reply composer.
+- **Catalog & Pricing** — SKUs, prices, discounts, push to WhatsApp catalog.
+- **Orders (OMS)** — WA-cart & agent orders, lifecycle, payment links, issue flags, warehouse notices.
+- **Warehouse (WMS)** — fulfillment queue, stock health, notices.
+- **Pack Station** — auto-generated shipping labels with scannable AWB barcode, scan-to-pack flow (scan label → sequential per-product barcode scanning with quantity tracking), timestamped + attributed scan log, and a downloadable throughput/accountability report (summary + scan-level CSV).
+- **Shipments** — Biteship rates/tracking timelines.
+- **Dashboards** — sales (revenue, growing/declining SKUs, retention) and CS (cases, chats, response time).
+- **Settings** — integration status, team, RBAC matrix, theme.
+
+## Architecture notes
+
+- `src/lib/data/repo.ts` — single data-access facade (demo ↔ Supabase). UI imports only from here.
+- `src/lib/integrations/*` — WhatsApp, payments, shipping, catalog adapters (real calls + mock fallback).
+- `src/lib/rbac.ts` — role → permission matrix; enforced via `requirePermission()` and RLS.
+- `src/middleware.ts` — auth gating + Supabase session refresh.

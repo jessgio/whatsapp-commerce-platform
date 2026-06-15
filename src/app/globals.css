@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+/*
+  Merlot Charm design system
+  Palette: Cream #EDE6DB · Beige #D8C9B5 · Mauve-taupe #B49E8E
+           Brown #5F5448 · Merlot #6F2C3F (primary) · Charcoal #2D2B2A
+*/
+
+@theme {
+  --color-cream: #f6f1e9;
+  --color-cream-100: #fbf7f0;
+  --color-beige: #d8c9b5;
+  --color-beige-200: #e7dccb;
+  --color-taupe: #b49e8e;
+  --color-brown: #5f5448;
+  --color-merlot: #6f2c3f;
+  --color-merlot-600: #5c2434;
+  --color-merlot-400: #8a3a4f;
+  --color-charcoal: #2d2b2a;
+
+  --color-background: #f4eee5;
+  --color-surface: #ffffff;
+  --color-surface-muted: #fbf7f0;
+  --color-foreground: #2d2b2a;
+  --color-muted: #8a7e72;
+  --color-border: #e6dccb;
+  --color-primary: #6f2c3f;
+  --color-primary-foreground: #fbf6ee;
+  --color-accent: #b49e8e;
+
+  --color-success: #3f6f53;
+  --color-warning: #b5862f;
+  --color-danger: #a23a3a;
+  --color-info: #3a5a7a;
+
+  --color-sidebar: #26211f;
+  --color-sidebar-foreground: #d8c9b5;
+  --color-sidebar-active: #6f2c3f;
+
+  --radius-card: 14px;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Snappy, subtle scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-beige) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-beige);
+  border-radius: 99px;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+/* Printable labels: hide the app chrome, show only the label. */
+@media print {
+  body {
+    background: #ffffff;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
