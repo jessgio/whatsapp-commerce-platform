@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "biteship:test-orders": "node scripts/create-biteship-test-orders.mjs"
+    "biteship:test-orders": "node scripts/create-biteship-test-orders.mjs",
+    "vercel:env": "node scripts/sync-vercel-env.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
