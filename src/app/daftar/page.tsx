@@ -29,7 +29,8 @@ export default function DaftarPage() {
 
           <h1 className="text-xl font-semibold text-foreground">Lengkapi data Anda</h1>
           <p className="mt-1 text-sm text-muted">
-            Isi formulir di bawah ini. Data Anda akan tersimpan di sistem CRM kami.
+            Isi formulir di bawah ini untuk mendapatkan kode diskon. Data Anda
+            akan disimpan di sistem internal kami secara baik dan aman.
           </p>
 
           <div className="mt-6">
