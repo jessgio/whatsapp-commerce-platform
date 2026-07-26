@@ -28,7 +28,7 @@ import { LeadWelcomeEmail } from "@/emails/lead-welcome";
 import {
   createEmailAssetUploadSlotAction,
   saveLeadWelcomeEmailAction,
-} from "@/app/(portal)/settings/emails/actions";
+} from "@/app/(portal)/marketing/design/email/actions";
 import { ImageResizeModal } from "@/components/settings/image-resize-modal";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
@@ -333,10 +333,24 @@ function SortableBlockCard({
   );
 }
 
+type EmailSaveInput = {
+  subject: string;
+  accentColor: string;
+  blocks: EmailBlock[];
+};
+
+type EmailSaveResult = { ok: boolean; error?: string };
+
 export function EmailTemplateEditor({
   initial,
+  onSave,
+  successMessage = "Template saved. New form submissions will use this design.",
+  saveLabel = "Save template",
 }: {
   initial: EmailTemplate;
+  onSave?: (input: EmailSaveInput) => Promise<EmailSaveResult>;
+  successMessage?: string;
+  saveLabel?: string;
 }) {
   const [subject, setSubject] = useState(initial.subject);
   const [accentColor, setAccentColor] = useState(initial.accentColor);
@@ -478,16 +492,15 @@ export function EmailTemplateEditor({
     setSaving(true);
     setMessage(null);
     try {
-      const res = await saveLeadWelcomeEmailAction({
+      const save = onSave ?? saveLeadWelcomeEmailAction;
+      const res = await save({
         subject,
         accentColor,
         blocks,
       });
       setMessage({
         ok: res.ok,
-        text: res.ok
-          ? "Template saved. New form submissions will use this design."
-          : (res.error ?? "Save failed."),
+        text: res.ok ? successMessage : (res.error ?? "Save failed."),
       });
     } finally {
       setSaving(false);
@@ -617,7 +630,7 @@ export function EmailTemplateEditor({
 
           <div className="mt-5 flex justify-end">
             <Button type="button" disabled={saving} onClick={handleSave}>
-              {saving ? "Saving…" : "Save template"}
+              {saving ? "Saving…" : saveLabel}
             </Button>
           </div>
         </div>

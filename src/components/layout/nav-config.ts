@@ -5,7 +5,7 @@ export interface NavItem {
   label: string;
   icon: string; // lucide icon name
   permission: Permission;
-  group: "Overview" | "Engage" | "Commerce" | "Operations";
+  group: "Overview" | "Engage" | "Marketing" | "Commerce" | "Operations";
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -15,6 +15,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/customers", label: "Customers", icon: "Users", permission: "customers.view", group: "Engage" },
   { href: "/customers/segments", label: "Segments", icon: "Layers", permission: "customers.view", group: "Engage" },
   { href: "/cases", label: "Cases", icon: "TicketCheck", permission: "cases.view", group: "Engage" },
+  { href: "/marketing/design", label: "Design", icon: "Palette", permission: "marketing.view", group: "Marketing" },
+  { href: "/marketing/campaigns", label: "Campaigns", icon: "Megaphone", permission: "marketing.view", group: "Marketing" },
   { href: "/catalog", label: "Catalog & Pricing", icon: "Tags", permission: "catalog.view", group: "Commerce" },
   { href: "/orders", label: "Orders", icon: "ShoppingBag", permission: "orders.view", group: "Commerce" },
   { href: "/warehouse", label: "Warehouse", icon: "Warehouse", permission: "warehouse.view", group: "Operations" },

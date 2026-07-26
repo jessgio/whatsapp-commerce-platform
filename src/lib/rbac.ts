@@ -18,6 +18,9 @@ export type Permission =
   | "shipments.edit"
   | "cases.view"
   | "cases.edit"
+  | "marketing.view"
+  | "marketing.edit"
+  | "marketing.send"
   | "account.view"
   | "settings.manage";
 
@@ -39,6 +42,9 @@ const ALL: Permission[] = [
   "shipments.edit",
   "cases.view",
   "cases.edit",
+  "marketing.view",
+  "marketing.edit",
+  "marketing.send",
   "account.view",
   "settings.manage",
 ];
@@ -59,6 +65,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "shipments.view",
     "cases.view",
     "cases.edit",
+    "marketing.view",
+    "marketing.edit",
+    "marketing.send",
     "account.view",
   ],
   cs: [
@@ -71,6 +80,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "shipments.view",
     "cases.view",
     "cases.edit",
+    "marketing.view",
     "account.view",
   ],
   warehouse: [

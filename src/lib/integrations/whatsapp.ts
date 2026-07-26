@@ -1,8 +1,10 @@
 import { env } from "@/lib/env";
+import { buildInteractivePayload } from "@/lib/integrations/whatsapp-interactive";
+import type { WaInteractiveDesign } from "@/lib/whatsapp-designs";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 
-interface SendResult {
+export interface SendResult {
   ok: boolean;
   messageId?: string;
   mocked?: boolean;
@@ -38,7 +40,7 @@ export async function sendTemplate(
   components?: unknown[],
 ): Promise<SendResult> {
   if (!configured()) {
-    console.info("[whatsapp:mock] sendTemplate", { to, templateName });
+    console.info("[whatsapp:mock] sendTemplate", { to, templateName, components });
     return { ok: true, mocked: true, messageId: `mock-tpl-${Date.now()}` };
   }
   return graphSend({
@@ -51,6 +53,29 @@ export async function sendTemplate(
       ...(components ? { components } : {}),
     },
   });
+}
+
+/**
+ * Send a session interactive / image / text design via Cloud API payloads.
+ * Only valid inside the 24h customer care window.
+ */
+export async function sendInteractiveDesign(
+  to: string,
+  design: WaInteractiveDesign,
+): Promise<SendResult> {
+  const payload = buildInteractivePayload(to, design);
+  if (!payload) {
+    return { ok: false, error: "Invalid interactive design payload." };
+  }
+  if (!configured()) {
+    console.info("[whatsapp:mock] sendInteractiveDesign", {
+      to,
+      kind: design.kind,
+      type: payload.type,
+    });
+    return { ok: true, mocked: true, messageId: `mock-int-${Date.now()}` };
+  }
+  return graphSend(payload);
 }
 
 async function graphSend(payload: Record<string, unknown>): Promise<SendResult> {

@@ -6,7 +6,13 @@ import * as Icons from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "./nav-config";
 
-const GROUPS: NavItem["group"][] = ["Overview", "Engage", "Commerce", "Operations"];
+const GROUPS: NavItem["group"][] = [
+  "Overview",
+  "Engage",
+  "Marketing",
+  "Commerce",
+  "Operations",
+];
 
 export function Sidebar({ items }: { items: NavItem[] }) {
   const pathname = usePathname();

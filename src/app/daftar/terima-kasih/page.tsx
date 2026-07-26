@@ -52,8 +52,7 @@ export default function TerimaKasihPage() {
             Terima kasih telah menjadi bagian dari Aeris Beauté.
           </p>
           <p className="mt-2 text-sm text-muted">
-            Sebagai sambutan dari kami, nikmati 15% OFF untuk pembelian Anda
-            berikutnya di toko{" "}
+            Nikmati potongan diskon 25RB dengan minimum belanja 199RB di toko{" "}
             <a
               href="https://shopee.co.id/aerisbeaute"
               target="_blank"
