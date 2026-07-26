@@ -6,30 +6,41 @@ import { Search } from "lucide-react";
 import { Avatar, Table, Th, Td } from "@/components/ui";
 import { ConsentBadge } from "@/components/status";
 import { formatIDRCompact, formatDate } from "@/lib/format";
+import { filterCustomersByRules, type SegmentDefinition } from "@/lib/segments";
 import type { Customer } from "@/lib/types";
 
 export function CustomerTable({
   customers,
   canSeePii,
+  segments = [],
 }: {
   customers: Customer[];
   canSeePii: boolean;
+  segments?: SegmentDefinition[];
 }) {
   const [q, setQ] = useState("");
   const [segment, setSegment] = useState("all");
 
   const filtered = useMemo(() => {
     const term = q.toLowerCase();
+    const saved = segments.find((s) => s.id === segment);
+
     return customers.filter((c) => {
       const matchesTerm =
         !term ||
         c.name.toLowerCase().includes(term) ||
         c.phone.includes(term) ||
-        c.waId.includes(term);
-      const matchesSeg = segment === "all" || c.segments.includes(segment);
-      return matchesTerm && matchesSeg;
+        c.waId.includes(term) ||
+        (c.city?.toLowerCase().includes(term) ?? false);
+
+      if (!matchesTerm) return false;
+
+      if (segment === "all") return true;
+      if (saved) return filterCustomersByRules([c], saved.rules).length > 0;
+      // Built-in legacy labels still stored on customers.segments
+      return c.segments.includes(segment);
     });
-  }, [customers, q, segment]);
+  }, [customers, q, segment, segments]);
 
   return (
     <div>
@@ -39,7 +50,7 @@ export function CustomerTable({
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search name, phone, wa_id…"
+            placeholder="Search name, phone, city…"
             className="w-full rounded-lg border border-border bg-surface py-2 pl-9 pr-3 text-sm outline-none focus:border-merlot"
           />
         </div>
@@ -48,11 +59,28 @@ export function CustomerTable({
           onChange={(e) => setSegment(e.target.value)}
           className="rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-merlot"
         >
-          <option value="all">All segments</option>
-          <option value="VIP">VIP</option>
-          <option value="Repeat">Repeat</option>
-          <option value="New">New</option>
+          <option value="all">All customers</option>
+          {segments.length > 0 && (
+            <optgroup label="Saved segments">
+              {segments.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          <optgroup label="Legacy labels">
+            <option value="VIP">VIP</option>
+            <option value="Repeat">Repeat</option>
+            <option value="New">New</option>
+          </optgroup>
         </select>
+        <Link
+          href="/customers/segments"
+          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-merlot hover:bg-surface-muted"
+        >
+          Manage segments
+        </Link>
         <span className="ml-auto text-xs text-muted">{filtered.length} customers</span>
       </div>
 

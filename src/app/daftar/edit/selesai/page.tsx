@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BrandMark } from "@/components/brand-mark";
 
 export const metadata: Metadata = {
   title: "Data Diperbarui | Aeris Beauté",
@@ -13,8 +14,8 @@ export default function DaftarEditSelesaiPage() {
       />
       <div className="relative mx-auto flex min-h-screen w-full max-w-lg flex-col items-center justify-center px-4 py-10 text-center">
         <div className="animate-fade-in w-full rounded-[20px] border border-border bg-surface p-8 shadow-[0_12px_40px_rgba(45,43,42,0.10)]">
-          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-merlot text-lg font-bold text-primary-foreground">
-            A
+          <div className="mx-auto mb-5 flex justify-center">
+            <BrandMark size={48} className="rounded-full" />
           </div>
           <p className="text-sm font-medium uppercase tracking-wide text-merlot">
             Aeris Beauté

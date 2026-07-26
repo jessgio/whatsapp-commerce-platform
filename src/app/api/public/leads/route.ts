@@ -4,6 +4,7 @@ import { sendLeadWelcomeEmail } from "@/lib/email";
 import { isSupabaseConfigured } from "@/lib/env";
 import { newEditToken } from "@/lib/lead-edit";
 import { LEAD_DISCOUNT_CODE } from "@/lib/lead-offer";
+import { resolveCanonicalCity } from "@/lib/cities";
 import { parseLeadFields } from "@/lib/lead-validation";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import type { Customer } from "@/lib/types";
@@ -105,7 +106,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: parsed.error }, { status: 400 });
   }
 
-  const { data } = parsed;
+  const cityResolved = await resolveCanonicalCity(parsed.data.city);
+  if ("error" in cityResolved) {
+    return NextResponse.json({ ok: false, error: cityResolved.error }, { status: 400 });
+  }
+
+  const data = { ...parsed.data, city: cityResolved.city };
   const now = new Date().toISOString();
 
   if (!isSupabaseConfigured()) {

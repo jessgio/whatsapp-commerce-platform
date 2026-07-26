@@ -16,6 +16,10 @@ export const metadata: Metadata = {
   title: "Aeris Beaute · WhatsApp Commerce Platform",
   description:
     "Internal CRM, OMS & WMS connected to WhatsApp Business for sales, customer service, and warehouse operations.",
+  icons: {
+    icon: [{ url: "/brand/og-icon.png", type: "image/png" }],
+    apple: [{ url: "/apple-icon.png" }],
+  },
 };
 
 export default function RootLayout({

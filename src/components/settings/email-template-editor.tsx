@@ -71,7 +71,7 @@ function SortableBlockCard({
   onSelect: () => void;
   onChange: (next: EmailBlock) => void;
   onRemove: () => void;
-  onPickImage: (file: File) => void;
+  onPickImage: (file: File, field: "src" | "logoUrl") => void;
   uploading: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -129,6 +129,55 @@ function SortableBlockCard({
               onChange={(e) => onChange({ ...block, brandName: e.target.value })}
               placeholder="Brand name"
             />
+
+            <div className="rounded-lg border border-border bg-surface-muted/40 p-3">
+              <p className="text-xs font-medium text-foreground">Brand logo</p>
+              {block.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={block.logoUrl}
+                  alt="Brand logo"
+                  className="mt-2 max-h-16 object-contain"
+                />
+              ) : (
+                <p className="mt-1 text-[11px] text-muted">
+                  No logo yet — the letter mark is used instead (if enabled).
+                </p>
+              )}
+              <div className="mt-2 flex flex-wrap gap-2">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-foreground hover:bg-surface-muted">
+                  <ImagePlus size={14} />
+                  {uploading ? "Uploading…" : "Upload logo"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) onPickImage(file, "logoUrl");
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                {block.logoUrl ? (
+                  <button
+                    type="button"
+                    className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted hover:bg-danger/10 hover:text-danger"
+                    onClick={() => onChange({ ...block, logoUrl: "" })}
+                  >
+                    Remove logo
+                  </button>
+                ) : null}
+              </div>
+              <input
+                className={fieldClass}
+                value={block.logoUrl ?? ""}
+                onChange={(e) => onChange({ ...block, logoUrl: e.target.value })}
+                placeholder="Or paste logo URL"
+              />
+            </div>
+
             <label className="flex items-center gap-2 text-xs text-foreground">
               <input
                 type="checkbox"
@@ -137,8 +186,12 @@ function SortableBlockCard({
                   onChange({ ...block, showMark: e.target.checked })
                 }
                 className="accent-merlot"
+                disabled={Boolean(block.logoUrl?.trim())}
               />
-              Show “A” mark
+              Show “A” mark{" "}
+              {block.logoUrl?.trim() ? (
+                <span className="text-muted">(hidden while logo is set)</span>
+              ) : null}
             </label>
           </>
         )}
@@ -167,7 +220,7 @@ function SortableBlockCard({
                 disabled={uploading}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) onPickImage(file);
+                  if (file) onPickImage(file, "src");
                   e.target.value = "";
                 }}
               />
@@ -297,6 +350,7 @@ export function EmailTemplateEditor({
   const [resizeTarget, setResizeTarget] = useState<{
     blockId: string;
     file: File;
+    field: "src" | "logoUrl";
   } | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(
     null,
@@ -346,7 +400,11 @@ export function EmailTemplateEditor({
     });
   }
 
-  async function handleUpload(blockId: string, file: File) {
+  async function handleUpload(
+    blockId: string,
+    file: File,
+    field: "src" | "logoUrl",
+  ) {
     setUploadingId(blockId);
     setMessage(null);
     try {
@@ -388,13 +446,23 @@ export function EmailTemplateEditor({
       }
 
       setBlocks((prev) =>
-        prev.map((b) =>
-          b.id === blockId && b.type === "image" ? { ...b, src: publicUrl } : b,
-        ),
+        prev.map((b) => {
+          if (b.id !== blockId) return b;
+          if (field === "logoUrl" && b.type === "header") {
+            return { ...b, logoUrl: publicUrl };
+          }
+          if (field === "src" && b.type === "image") {
+            return { ...b, src: publicUrl };
+          }
+          return b;
+        }),
       );
       setMessage({
         ok: true,
-        text: "Image uploaded. Remember to save the template.",
+        text:
+          field === "logoUrl"
+            ? "Logo uploaded. Remember to save the template."
+            : "Image uploaded. Remember to save the template.",
       });
     } catch (e) {
       setMessage({
@@ -493,8 +561,8 @@ export function EmailTemplateEditor({
                     onSelect={() => setSelectedId(block.id)}
                     onChange={(next) => updateBlock(block.id, next)}
                     onRemove={() => removeBlock(block.id)}
-                    onPickImage={(file) =>
-                      setResizeTarget({ blockId: block.id, file })
+                    onPickImage={(file, field) =>
+                      setResizeTarget({ blockId: block.id, file, field })
                     }
                     uploading={uploadingId === block.id}
                   />
@@ -508,9 +576,9 @@ export function EmailTemplateEditor({
               file={resizeTarget.file}
               onCancel={() => setResizeTarget(null)}
               onConfirm={(file) => {
-                const blockId = resizeTarget.blockId;
+                const { blockId, field } = resizeTarget;
                 setResizeTarget(null);
-                void handleUpload(blockId, file);
+                void handleUpload(blockId, file, field);
               }}
             />
           )}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { DEMO_CUSTOMERS } from "@/lib/demo/data";
 import { getLeadProfileByEditToken } from "@/lib/data/lead-profile";
 import { isSupabaseConfigured } from "@/lib/env";
+import { resolveCanonicalCity } from "@/lib/cities";
 import { parseLeadFields } from "@/lib/lead-validation";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
@@ -41,7 +42,12 @@ export async function PATCH(req: NextRequest) {
   if ("error" in parsed) {
     return NextResponse.json({ ok: false, error: parsed.error }, { status: 400 });
   }
-  const { data } = parsed;
+
+  const cityResolved = await resolveCanonicalCity(parsed.data.city);
+  if ("error" in cityResolved) {
+    return NextResponse.json({ ok: false, error: cityResolved.error }, { status: 400 });
+  }
+  const data = { ...parsed.data, city: cityResolved.city };
 
   if (!isSupabaseConfigured()) {
     const idx = DEMO_CUSTOMERS.findIndex((c) => c.editToken === token);

@@ -14,7 +14,10 @@ type BlockBase = { id: string };
 export type HeaderBlock = BlockBase & {
   type: "header";
   brandName: string;
+  /** Letter “A” fallback when no logo is set */
   showMark: boolean;
+  /** Uploaded brand logo URL (preferred over the letter mark) */
+  logoUrl?: string;
 };
 
 export type ImageBlock = BlockBase & {
@@ -79,7 +82,7 @@ export function createBlock(type: EmailBlockType): EmailBlock {
   const id = newBlockId();
   switch (type) {
     case "header":
-      return { id, type, brandName: "Aeris Beauté", showMark: true };
+      return { id, type, brandName: "Aeris Beauté", showMark: true, logoUrl: "" };
     case "image":
       return { id, type, src: "", alt: "Banner", href: "" };
     case "heading":
@@ -109,7 +112,13 @@ export function createBlock(type: EmailBlockType): EmailBlock {
 }
 
 export const DEFAULT_LEAD_WELCOME_BLOCKS: EmailBlock[] = [
-  { id: "b_header", type: "header", brandName: "Aeris Beauté", showMark: true },
+  {
+    id: "b_header",
+    type: "header",
+    brandName: "Aeris Beauté",
+    showMark: true,
+    logoUrl: "",
+  },
   { id: "b_heading", type: "heading", text: "Hello, {name}" },
   {
     id: "b_intro",
@@ -199,6 +208,7 @@ export function legacyFieldsToBlocks(input: {
     type: "header",
     brandName: input.brandName || "Aeris Beauté",
     showMark: true,
+    logoUrl: "",
   });
   blocks.push({
     id: newBlockId(),

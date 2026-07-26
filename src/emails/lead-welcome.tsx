@@ -39,7 +39,11 @@ function renderBlock(
   const { vars, discountCode, accent } = ctx;
 
   switch (block.type) {
-    case "header":
+    case "header": {
+      const logoUrl = block.logoUrl?.trim();
+      const showLogo = Boolean(logoUrl);
+      const showLetterMark = !showLogo && block.showMark;
+      const showBrandName = Boolean(block.brandName?.trim());
       return (
         <div
           key={block.id}
@@ -49,7 +53,25 @@ function renderBlock(
             textAlign: "center" as const,
           }}
         >
-          {block.showMark ? (
+          {showLogo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt={block.brandName || "Logo"}
+              width={160}
+              style={{
+                display: "block",
+                margin: "0 auto",
+                maxWidth: 160,
+                maxHeight: 72,
+                width: "auto",
+                height: "auto",
+                objectFit: "contain" as const,
+                border: 0,
+              }}
+            />
+          ) : null}
+          {showLetterMark ? (
             <div
               style={{
                 display: "inline-block",
@@ -67,19 +89,22 @@ function renderBlock(
               A
             </div>
           ) : null}
-          <p
-            style={{
-              margin: block.showMark ? "12px 0 0" : 0,
-              color: "#fbf6ee",
-              fontSize: 18,
-              fontWeight: 600,
-              letterSpacing: "0.02em",
-            }}
-          >
-            {block.brandName}
-          </p>
+          {showBrandName ? (
+            <p
+              style={{
+                margin: showLogo || showLetterMark ? "12px 0 0" : 0,
+                color: "#fbf6ee",
+                fontSize: 18,
+                fontWeight: 600,
+                letterSpacing: "0.02em",
+              }}
+            >
+              {block.brandName}
+            </p>
+          ) : null}
         </div>
       );
+    }
 
     case "image": {
       if (!block.src) return null;

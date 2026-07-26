@@ -13,6 +13,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/cs-dashboard", label: "CS Dashboard", icon: "Headset", permission: "dashboard.cs", group: "Overview" },
   { href: "/inbox", label: "Inbox", icon: "MessagesSquare", permission: "inbox.view", group: "Engage" },
   { href: "/customers", label: "Customers", icon: "Users", permission: "customers.view", group: "Engage" },
+  { href: "/customers/segments", label: "Segments", icon: "Layers", permission: "customers.view", group: "Engage" },
   { href: "/cases", label: "Cases", icon: "TicketCheck", permission: "cases.view", group: "Engage" },
   { href: "/catalog", label: "Catalog & Pricing", icon: "Tags", permission: "catalog.view", group: "Commerce" },
   { href: "/orders", label: "Orders", icon: "ShoppingBag", permission: "orders.view", group: "Commerce" },

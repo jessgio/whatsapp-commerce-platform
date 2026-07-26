@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BrandMark } from "@/components/brand-mark";
 import { LeadEditForm } from "@/components/leads/lead-edit-form";
 import { getLeadProfileByEditToken } from "@/lib/data/lead-profile";
 
@@ -65,9 +66,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       <div className="relative mx-auto flex min-h-screen w-full max-w-lg flex-col justify-center px-4 py-10">
         <div className="animate-fade-in rounded-[20px] border border-border bg-surface p-6 shadow-[0_12px_40px_rgba(45,43,42,0.10)] sm:p-8">
           <div className="mb-6 flex items-center gap-2.5">
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-merlot text-lg font-bold text-primary-foreground">
-              A
-            </span>
+            <BrandMark size={40} />
             <div>
               <p className="text-lg font-semibold tracking-tight text-foreground">
                 Aeris Beauté

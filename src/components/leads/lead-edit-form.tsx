@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
+import { CityCombobox } from "@/components/leads/city-combobox";
 import {
   COUNTRY_DIAL_CODES,
   DEFAULT_COUNTRY_DIAL,
@@ -155,12 +156,7 @@ export function LeadEditForm({
           Kota Domisili{" "}
           <span className="font-normal text-muted">(Opsional)</span>
         </label>
-        <input
-          id="city"
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          className={fieldClass}
-        />
+        <CityCombobox id="city" value={city} onChange={setCity} />
       </div>
 
       {error && (
