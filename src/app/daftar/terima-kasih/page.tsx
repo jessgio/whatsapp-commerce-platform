@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { LEAD_DISCOUNT_CODE } from "@/lib/lead-offer";
 
 export const metadata: Metadata = {
@@ -31,7 +30,7 @@ export default function TerimaKasihPage() {
               alt="Aeris"
               width={979}
               height={206}
-              className="h-auto w-44 object-contain"
+              className="h-auto w-28 object-contain"
               priority
             />
           </div>
@@ -88,13 +87,6 @@ export default function TerimaKasihPage() {
           <p className="mt-4 text-xs italic text-muted">
             Kode voucher berlaku hingga 30 September 2026.
           </p>
-
-          <Link
-            href="/daftar"
-            className="mt-8 inline-block text-sm text-merlot hover:underline"
-          >
-            Kembali ke formulir
-          </Link>
         </div>
       </div>
     </div>
