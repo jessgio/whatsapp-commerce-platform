@@ -29,6 +29,8 @@ export interface Customer {
   lastOrderAt: string | null;
   termsAcceptedAt: string | null;
   termsVersion: string | null;
+  /** Public profile-edit link token (never shown in CRM UI). */
+  editToken?: string | null;
   createdAt: string;
 }
 

@@ -1,4 +1,5 @@
-import { CheckCircle2, XCircle } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, Mail, XCircle } from "lucide-react";
 import { requirePermission } from "@/lib/guard";
 import { env, isSupabaseConfigured } from "@/lib/env";
 import { ROLE_LABELS, ROLE_PERMISSIONS } from "@/lib/rbac";
@@ -20,6 +21,7 @@ export default async function SettingsPage() {
       ok: env.payments.provider === "midtrans" ? Boolean(env.payments.midtransServerKey) : Boolean(env.payments.xenditSecretKey),
     },
     { name: "Biteship 3PL", ok: Boolean(env.shipping.biteshipKey) },
+    { name: "Resend (email)", ok: Boolean(env.resendApiKey) },
   ];
 
   const allPerms = ROLE_PERMISSIONS.admin;
@@ -27,6 +29,29 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-4">
       <PageHeader title="Settings" subtitle="Integrations, team access and theme" />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Email designer</CardTitle>
+          <Link href="/settings/emails" className="text-xs font-medium text-merlot hover:underline">
+            Open editor
+          </Link>
+        </CardHeader>
+        <CardBody className="flex items-start gap-3 pt-0">
+          <span className="mt-0.5 text-merlot">
+            <Mail size={18} />
+          </span>
+          <div>
+            <p className="text-sm text-foreground">
+              Drag-and-drop email builder with image uploads, text blocks,
+              discount codes, buttons, and live preview.
+            </p>
+            <p className="mt-1 text-xs text-muted">
+              Changes apply to new form submissions after you save.
+            </p>
+          </div>
+        </CardBody>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle>Integration status</CardTitle></CardHeader>

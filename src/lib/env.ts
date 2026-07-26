@@ -10,6 +10,13 @@ export const env = {
   supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
   supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
 
+  /** Resend API key for transactional email (QR lead welcome, etc.). */
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+  /** Verified sender, e.g. `Aeris Beauté <hello@aerisbeaute.com>`. */
+  emailFrom: process.env.EMAIL_FROM ?? "",
+  /** Public base for QR / edit links, e.g. `https://join.aerisbeaute.com`. */
+  publicFormBaseUrl: process.env.PUBLIC_FORM_BASE_URL ?? "",
+
   whatsapp: {
     token: process.env.WHATSAPP_ACCESS_TOKEN ?? "",
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? "",

@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DEMO_CUSTOMERS } from "@/lib/demo/data";
+import { sendLeadWelcomeEmail } from "@/lib/email";
 import { isSupabaseConfigured } from "@/lib/env";
-import { normalizePhone, normalizePhoneParts } from "@/lib/phone";
+import { newEditToken } from "@/lib/lead-edit";
+import { LEAD_DISCOUNT_CODE } from "@/lib/lead-offer";
+import { parseLeadFields } from "@/lib/lead-validation";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import type { Customer } from "@/lib/types";
 
 const TERMS_VERSION = "qr_v1";
 const CONSENT_NOTE =
-  "QR form: accepted T&C opsi 1 (CRM & komunikasi) and opsi 2 (kerahasiaan data).";
+  "QR form: accepted T&C (CRM & komunikasi + kerahasiaan data).";
 
 type LeadBody = {
   name?: string;
@@ -16,67 +19,8 @@ type LeadBody = {
   countryCode?: string;
   email?: string;
   city?: string;
-  acceptTerms1?: boolean;
-  acceptTerms2?: boolean;
+  acceptTerms?: boolean;
 };
-
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-function isValidBirthDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const d = new Date(`${value}T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return false;
-  const iso = d.toISOString().slice(0, 10);
-  if (iso !== value) return false;
-  const now = new Date();
-  if (d > now) return false;
-  // Reject obviously impossible ages
-  const year = d.getUTCFullYear();
-  const thisYear = now.getUTCFullYear();
-  if (thisYear - year > 120) return false;
-  return true;
-}
-
-function parseBody(body: LeadBody) {
-  const name = body.name?.trim() ?? "";
-  const birthDate = body.birthDate?.trim() ?? "";
-  const email = body.email?.trim().toLowerCase() ?? "";
-  const city = body.city?.trim() || null;
-  const phoneRaw = body.phone?.trim() ?? "";
-  const countryCode = body.countryCode?.trim() ?? "";
-
-  if (!name || name.length < 2) {
-    return { error: "Nama lengkap wajib diisi." as const };
-  }
-  if (!isValidBirthDate(birthDate)) {
-    return { error: "Tanggal lahir tidak valid." as const };
-  }
-  const normalized = countryCode
-    ? normalizePhoneParts(countryCode, phoneRaw)
-    : normalizePhone(phoneRaw);
-  if (!normalized) {
-    return { error: "Nomor telepon tidak valid." as const };
-  }
-  if (!email || !isValidEmail(email)) {
-    return { error: "Alamat email tidak valid." as const };
-  }
-  if (!body.acceptTerms1 || !body.acceptTerms2) {
-    return { error: "Anda harus menyetujui kedua pernyataan T&C." as const };
-  }
-
-  return {
-    data: {
-      name,
-      birthDate,
-      email,
-      city,
-      waId: normalized.waId,
-      phone: normalized.phone,
-    },
-  };
-}
 
 function upsertDemoLead(data: {
   name: string;
@@ -98,6 +42,7 @@ function upsertDemoLead(data: {
   if (existingIdx >= 0) {
     const prev = DEMO_CUSTOMERS[existingIdx];
     const tags = prev.tags.includes("qr_lead") ? prev.tags : [...prev.tags, "qr_lead"];
+    const editToken = prev.editToken || newEditToken();
     DEMO_CUSTOMERS[existingIdx] = {
       ...prev,
       name: data.name,
@@ -111,10 +56,12 @@ function upsertDemoLead(data: {
       termsAcceptedAt: now,
       termsVersion: TERMS_VERSION,
       tags,
+      editToken,
     };
-    return { id: prev.id, created: false };
+    return { id: prev.id, created: false, editToken };
   }
 
+  const editToken = newEditToken();
   const customer: Customer = {
     id: `c-lead-${Date.now()}`,
     waId: data.waId,
@@ -133,10 +80,11 @@ function upsertDemoLead(data: {
     lastOrderAt: null,
     termsAcceptedAt: now,
     termsVersion: TERMS_VERSION,
+    editToken,
     createdAt: now,
   };
   DEMO_CUSTOMERS.unshift(customer);
-  return { id: customer.id, created: true };
+  return { id: customer.id, created: true, editToken };
 }
 
 export async function POST(req: NextRequest) {
@@ -145,7 +93,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Permintaan tidak valid." }, { status: 400 });
   }
 
-  const parsed = parseBody(body);
+  if (!body.acceptTerms) {
+    return NextResponse.json(
+      { ok: false, error: "Anda harus menyetujui pernyataan T&C." },
+      { status: 400 },
+    );
+  }
+
+  const parsed = parseLeadFields(body);
   if ("error" in parsed) {
     return NextResponse.json({ ok: false, error: parsed.error }, { status: 400 });
   }
@@ -154,16 +109,21 @@ export async function POST(req: NextRequest) {
   const now = new Date().toISOString();
 
   if (!isSupabaseConfigured()) {
-    upsertDemoLead(data);
+    const result = upsertDemoLead(data);
+    await sendLeadWelcomeEmail({
+      to: data.email,
+      name: data.name,
+      editToken: result.editToken,
+      discountCode: LEAD_DISCOUNT_CODE,
+    });
     return NextResponse.json({ ok: true });
   }
 
   const supabase = createSupabaseAdminClient();
 
-  // Match by wa_id, normalized phone digits, or email (case-insensitive).
   const { data: byWa } = await supabase
     .from("customers")
-    .select("id, tags")
+    .select("id, tags, edit_token")
     .eq("wa_id", data.waId)
     .maybeSingle();
 
@@ -172,7 +132,7 @@ export async function POST(req: NextRequest) {
   if (!existing) {
     const { data: byPhone } = await supabase
       .from("customers")
-      .select("id, tags")
+      .select("id, tags, edit_token")
       .eq("phone", data.phone)
       .maybeSingle();
     existing = byPhone;
@@ -181,11 +141,14 @@ export async function POST(req: NextRequest) {
   if (!existing) {
     const { data: byEmail } = await supabase
       .from("customers")
-      .select("id, tags")
+      .select("id, tags, edit_token")
       .ilike("email", data.email)
       .maybeSingle();
     existing = byEmail;
   }
+
+  const editToken =
+    (existing?.edit_token as string | null | undefined) || newEditToken();
 
   const payload = {
     name: data.name,
@@ -198,6 +161,7 @@ export async function POST(req: NextRequest) {
     consent_channel: "web_form",
     terms_accepted_at: now,
     terms_version: TERMS_VERSION,
+    edit_token: editToken,
   };
 
   let customerId: string;
@@ -206,7 +170,6 @@ export async function POST(req: NextRequest) {
     const tags: string[] = Array.isArray(existing.tags) ? [...existing.tags] : [];
     if (!tags.includes("qr_lead")) tags.push("qr_lead");
 
-    // Avoid unique wa_id clash when match was by email and phone belongs elsewhere.
     const { data: waOwner } = await supabase
       .from("customers")
       .select("id")
@@ -224,6 +187,7 @@ export async function POST(req: NextRequest) {
             consent_channel: payload.consent_channel,
             terms_accepted_at: payload.terms_accepted_at,
             terms_version: payload.terms_version,
+            edit_token: editToken,
             tags,
           }
         : { ...payload, tags };
@@ -275,8 +239,14 @@ export async function POST(req: NextRequest) {
 
   if (consentError) {
     console.error("[leads] consent ledger failed", consentError);
-    // Customer row already saved — still succeed for the user.
   }
+
+  await sendLeadWelcomeEmail({
+    to: data.email,
+    name: data.name,
+    editToken,
+    discountCode: LEAD_DISCOUNT_CODE,
+  });
 
   return NextResponse.json({ ok: true });
 }

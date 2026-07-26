@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LEAD_DISCOUNT_CODE } from "@/lib/lead-offer";
 
 export const metadata: Metadata = {
   title: "Terima Kasih | Aeris Beauté",
 };
-
-const DISCOUNT_CODE = "AERIS15";
 
 export default function TerimaKasihPage() {
   return (
@@ -25,7 +24,8 @@ export default function TerimaKasihPage() {
           <h1 className="mt-2 text-2xl font-semibold text-foreground">Terima kasih!</h1>
           <p className="mt-2 text-sm text-muted">
             Data Anda sudah kami terima. Gunakan kode diskon di bawah ini untuk
-            pembelian berikutnya.
+            pembelian berikutnya. Kami juga mengirimkan kode yang sama ke email
+            Anda.
           </p>
 
           <div className="mt-8 rounded-xl border border-dashed border-merlot/40 bg-merlot/5 px-4 py-6">
@@ -33,13 +33,13 @@ export default function TerimaKasihPage() {
               Kode diskon Anda
             </p>
             <p className="mt-2 font-mono text-3xl font-semibold tracking-[0.18em] text-merlot">
-              {DISCOUNT_CODE}
+              {LEAD_DISCOUNT_CODE}
             </p>
           </div>
 
           <p className="mt-6 text-xs text-muted">
-            Simpan atau screenshot kode ini. Tim kami akan menghubungi Anda jika
-            diperlukan.
+            Cek inbox (dan folder spam) jika belum melihat emailnya. Simpan atau
+            screenshot kode ini juga.
           </p>
 
           <Link

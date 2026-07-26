@@ -40,6 +40,7 @@ const sensitive = new Set([
   "WHATSAPP_APP_SECRET",
   "MIDTRANS_SERVER_KEY",
   "XENDIT_SECRET_KEY",
+  "RESEND_API_KEY",
 ]);
 
 function addEnv(key, value, target) {

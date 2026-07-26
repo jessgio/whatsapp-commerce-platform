@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { env } from "@/lib/env";
 
@@ -23,9 +24,19 @@ export async function createSupabaseServerClient() {
   });
 }
 
-/** Service-role client for trusted server contexts (webhooks, cron). Bypasses RLS. */
+/**
+ * Service-role client for trusted server contexts (webhooks, storage, cron).
+ * Uses supabase-js (not SSR cookie client) so Storage uploads work reliably.
+ */
 export function createSupabaseAdminClient() {
-  return createServerClient(env.supabaseUrl, env.supabaseServiceKey, {
-    cookies: { getAll: () => [], setAll: () => {} },
+  if (!env.supabaseUrl || !env.supabaseServiceKey) {
+    throw new Error("Supabase service client is not configured.");
+  }
+  return createClient(env.supabaseUrl, env.supabaseServiceKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
   });
 }
