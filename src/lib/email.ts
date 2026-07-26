@@ -1,3 +1,4 @@
+import { render } from "@react-email/render";
 import { Resend } from "resend";
 import { LeadWelcomeEmail } from "@/emails/lead-welcome";
 import { getLeadWelcomeTemplateAdmin } from "@/lib/data/email-templates";
@@ -12,10 +13,12 @@ function getResend() {
 }
 
 function fromAddress(): string {
-  return (
-    process.env.EMAIL_FROM?.trim() ||
-    "Aeris Beauté <onboarding@resend.dev>"
-  );
+  const raw =
+    process.env.EMAIL_FROM?.trim() || "Aeris Beauté <onboarding@resend.dev>";
+  // Resend accepts bare emails; prefer a branded display name when none is set.
+  if (raw.includes("<")) return raw;
+  if (raw.includes("@")) return `Aeris Beauté <${raw}>`;
+  return raw;
 }
 
 /** Sends the QR-lead welcome email with discount code. Failures are logged, not thrown. */
@@ -38,16 +41,21 @@ export async function sendLeadWelcomeEmail(input: {
     const vars = { name: input.name, editUrl };
     const subject = applyTemplateVars(template.subject, vars);
 
-    const { error } = await resend.emails.send({
-      from: fromAddress(),
-      to: input.to,
-      subject,
-      react: LeadWelcomeEmail({
+    // Pre-render to HTML so Resend never needs to resolve React Email at send time.
+    const html = await render(
+      LeadWelcomeEmail({
         name: input.name,
         discountCode,
         template,
         editUrl,
       }),
+    );
+
+    const { error } = await resend.emails.send({
+      from: fromAddress(),
+      to: input.to,
+      subject,
+      html,
     });
 
     if (error) {
