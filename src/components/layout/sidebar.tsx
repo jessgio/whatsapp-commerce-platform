@@ -2,9 +2,44 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import * as Icons from "lucide-react";
+import {
+  Headset,
+  Layers,
+  LayoutDashboard,
+  Megaphone,
+  MessagesSquare,
+  Palette,
+  ScanLine,
+  Settings,
+  ShoppingBag,
+  Tags,
+  TicketCheck,
+  Truck,
+  UserCircle,
+  Users,
+  Warehouse,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "./nav-config";
+
+const ICONS: Record<string, LucideIcon> = {
+  LayoutDashboard,
+  Headset,
+  MessagesSquare,
+  Users,
+  Layers,
+  TicketCheck,
+  Palette,
+  Megaphone,
+  Tags,
+  ShoppingBag,
+  Warehouse,
+  ScanLine,
+  Truck,
+  UserCircle,
+  Settings,
+};
 
 const GROUPS: NavItem["group"][] = [
   "Overview",
@@ -45,13 +80,13 @@ export function Sidebar({ items }: { items: NavItem[] }) {
               </p>
               <div className="space-y-0.5">
                 {groupItems.map((item) => {
-                  const Icon = (Icons[item.icon as keyof typeof Icons] ??
-                    Icons.Circle) as Icons.LucideIcon;
+                  const Icon = ICONS[item.icon] ?? LayoutDashboard;
                   const active = item.href === activeHref;
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
+                      prefetch
                       className={cn(
                         "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
                         active

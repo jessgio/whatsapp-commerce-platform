@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -10,8 +11,10 @@ export const DEMO_COOKIE = "merlot_demo_user";
  * Resolves the current authenticated user.
  * In Supabase mode this reads the session + `users` profile row.
  * In demo mode it reads the selected demo identity from a cookie.
+ *
+ * Cached per request so layout + page guards share one auth/profile lookup.
  */
-export async function getCurrentUser(): Promise<AppUser | null> {
+export const getCurrentUser = cache(async (): Promise<AppUser | null> => {
   if (isSupabaseConfigured()) {
     const supabase = await createSupabaseServerClient();
     const {
@@ -39,4 +42,4 @@ export async function getCurrentUser(): Promise<AppUser | null> {
   const id = store.get(DEMO_COOKIE)?.value;
   if (!id) return null;
   return DEMO_USERS.find((u) => u.id === id) ?? null;
-}
+});

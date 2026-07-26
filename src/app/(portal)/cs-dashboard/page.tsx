@@ -11,7 +11,7 @@ import {
   PageHeader,
   StatCard,
 } from "@/components/ui";
-import { MiniBars } from "@/components/charts";
+import { MiniBars } from "@/components/charts-lazy";
 
 export default async function CsDashboardPage() {
   await requirePermission("dashboard.cs");

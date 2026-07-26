@@ -50,6 +50,9 @@ export async function middleware(request: NextRequest) {
   }
 
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+  // Webhooks / public APIs don't need session refresh — skip the auth round-trip.
+  const skipSessionRefresh =
+    pathname.startsWith("/api/webhooks") || pathname.startsWith("/api/public");
 
   // Demo mode (no Supabase): gate on the demo cookie only.
   if (!SUPABASE_URL || !SUPABASE_ANON) {
@@ -57,6 +60,10 @@ export async function middleware(request: NextRequest) {
     if (!hasDemo && !isPublic) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
+    return NextResponse.next();
+  }
+
+  if (skipSessionRefresh) {
     return NextResponse.next();
   }
 

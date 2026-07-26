@@ -42,6 +42,7 @@ export function ConversationList({ conversations }: { conversations: Conversatio
             <Link
               key={c.id}
               href={`/inbox/${c.id}`}
+              prefetch
               className={cn(
                 "flex gap-3 border-b border-border/60 px-3 py-3 transition-colors",
                 active ? "bg-surface-muted" : "hover:bg-surface-muted/60",

@@ -11,7 +11,7 @@ import {
   PageHeader,
   StatCard,
 } from "@/components/ui";
-import { RevenueTrend, CategoryBars } from "@/components/charts";
+import { RevenueTrend, CategoryBars } from "@/components/charts-lazy";
 
 export default async function DashboardPage() {
   await requirePermission("dashboard.sales");

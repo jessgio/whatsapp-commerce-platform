@@ -13,15 +13,13 @@ export default async function CustomerDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const user = await requirePermission("customers.view");
-  const { id } = await params;
-  const customer = await getCustomer(id);
-  if (!customer) notFound();
-
-  const [addresses, orders] = await Promise.all([
+  const [{ id }, user] = await Promise.all([params, requirePermission("customers.view")]);
+  const [customer, addresses, orders] = await Promise.all([
+    getCustomer(id),
     getCustomerAddresses(id),
     listOrdersForCustomer(id),
   ]);
+  if (!customer) notFound();
   const canSeePii = can(user.role, "customers.pii");
 
   return (

@@ -1,22 +1,33 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { startTransition, useEffect, useRef } from "react";
 
-/** Soft-refresh inbox RSC data on an interval; pauses while the tab is hidden. */
-export function InboxAutoRefresh({ intervalMs = 10_000 }: { intervalMs?: number }) {
+/**
+ * Soft-refresh inbox RSC data on an interval; pauses while the tab is hidden.
+ * Uses startTransition so refreshes don't block pointer/keyboard interactions.
+ */
+export function InboxAutoRefresh({ intervalMs = 30_000 }: { intervalMs?: number }) {
   const router = useRouter();
+  const lastRefreshAt = useRef(0);
 
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | undefined;
 
-    const refresh = () => {
-      if (document.visibilityState === "visible") router.refresh();
+    const refresh = (force = false) => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      // Avoid a double refresh when the tab becomes visible right after an interval tick.
+      if (!force && now - lastRefreshAt.current < intervalMs * 0.8) return;
+      lastRefreshAt.current = now;
+      startTransition(() => {
+        router.refresh();
+      });
     };
 
     const start = () => {
       if (timer) return;
-      timer = setInterval(refresh, intervalMs);
+      timer = setInterval(() => refresh(), intervalMs);
     };
 
     const stop = () => {
@@ -27,7 +38,7 @@ export function InboxAutoRefresh({ intervalMs = 10_000 }: { intervalMs?: number 
 
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
-        refresh();
+        refresh(true);
         start();
       } else {
         stop();

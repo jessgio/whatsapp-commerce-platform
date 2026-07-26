@@ -14,9 +14,11 @@ export default async function ConversationPage({
   params: Promise<{ conversationId: string }>;
 }) {
   const { conversationId } = await params;
-  const conv = await getConversation(conversationId);
+  const [conv, messages] = await Promise.all([
+    getConversation(conversationId),
+    listMessages(conversationId),
+  ]);
   if (!conv) notFound();
-  const messages = await listMessages(conversationId);
   const mins = windowMinutesLeft(conv.lastInboundAt);
   const windowOpen = mins > 0;
 
