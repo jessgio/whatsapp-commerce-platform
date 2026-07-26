@@ -116,12 +116,16 @@ export async function POST(req: NextRequest) {
 
   if (!isSupabaseConfigured()) {
     const result = upsertDemoLead(data);
-    await sendLeadWelcomeEmail({
-      to: data.email,
-      name: data.name,
-      editToken: result.editToken,
-      discountCode: LEAD_DISCOUNT_CODE,
-    });
+    try {
+      await sendLeadWelcomeEmail({
+        to: data.email,
+        name: data.name,
+        editToken: result.editToken,
+        discountCode: LEAD_DISCOUNT_CODE,
+      });
+    } catch (e) {
+      console.error("[leads] welcome email failed (non-blocking)", e);
+    }
     return NextResponse.json({ ok: true });
   }
 
@@ -247,12 +251,16 @@ export async function POST(req: NextRequest) {
     console.error("[leads] consent ledger failed", consentError);
   }
 
-  await sendLeadWelcomeEmail({
-    to: data.email,
-    name: data.name,
-    editToken,
-    discountCode: LEAD_DISCOUNT_CODE,
-  });
+  try {
+    await sendLeadWelcomeEmail({
+      to: data.email,
+      name: data.name,
+      editToken,
+      discountCode: LEAD_DISCOUNT_CODE,
+    });
+  } catch (e) {
+    console.error("[leads] welcome email failed (non-blocking)", e);
+  }
 
   return NextResponse.json({ ok: true });
 }

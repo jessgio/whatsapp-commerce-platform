@@ -31,28 +31,37 @@ export async function sendLeadWelcomeEmail(input: {
     return { ok: false, error: "missing_api_key" };
   }
 
-  const template = await getLeadWelcomeTemplateAdmin();
-  const discountCode = input.discountCode ?? LEAD_DISCOUNT_CODE;
-  const editUrl = leadEditUrl(input.editToken);
-  const vars = { name: input.name, editUrl };
-  const subject = applyTemplateVars(template.subject, vars);
+  try {
+    const template = await getLeadWelcomeTemplateAdmin();
+    const discountCode = input.discountCode ?? LEAD_DISCOUNT_CODE;
+    const editUrl = leadEditUrl(input.editToken);
+    const vars = { name: input.name, editUrl };
+    const subject = applyTemplateVars(template.subject, vars);
 
-  const { error } = await resend.emails.send({
-    from: fromAddress(),
-    to: input.to,
-    subject,
-    react: LeadWelcomeEmail({
-      name: input.name,
-      discountCode,
-      template,
-      editUrl,
-    }),
-  });
+    const { error } = await resend.emails.send({
+      from: fromAddress(),
+      to: input.to,
+      subject,
+      react: LeadWelcomeEmail({
+        name: input.name,
+        discountCode,
+        template,
+        editUrl,
+      }),
+    });
 
-  if (error) {
-    console.error("[email] lead welcome failed", error);
-    return { ok: false, error: error.message };
+    if (error) {
+      console.error("[email] lead welcome failed", error);
+      return { ok: false, error: error.message };
+    }
+
+    return { ok: true };
+  } catch (e) {
+    // Never fail the lead submission because of email rendering/delivery.
+    console.error("[email] lead welcome threw", e);
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "email_send_failed",
+    };
   }
-
-  return { ok: true };
 }
