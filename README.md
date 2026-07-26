@@ -28,14 +28,23 @@ Copy `.env.example` → `.env.local` and fill in credentials to go live.
 ## Go live
 
 1. Create a Supabase project; set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
-2. Apply schema: run `supabase/migrations/0001_schema.sql`, `0002_rls.sql`, `0003_functions.sql`.
+2. Apply schema: run `supabase/migrations/0001_schema.sql`, `0002_rls.sql`, `0003_functions.sql` (and later migrations as needed).
 3. (Optional) Load scale test data: `supabase/seed.sql` (15,000 customers).
-4. Add WhatsApp Cloud API, payment, and Biteship credentials.
-5. Point provider webhooks at:
+4. **Google staff login** (recommended):
+   - In [Google Cloud Console](https://console.cloud.google.com/auth/clients), create a **Web** OAuth client.
+   - Authorized JavaScript origins: your production origin and `http://localhost:3000`.
+   - Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback` (shown on Supabase → Authentication → Providers → Google).
+   - In Supabase, enable the **Google** provider and paste the Client ID + Client Secret.
+   - Under Authentication → URL Configuration, add redirect allow-list entries:
+     - `http://localhost:3000/auth/callback`
+     - `https://<your-production-host>/auth/callback`
+   - If Aeris uses Google Workspace for `aerisbeaute.com`, set the OAuth app Audience to **Internal** so only Workspace users can consent. The app also rejects non-`@aerisbeaute.com` emails in `/auth/callback`.
+5. Add WhatsApp Cloud API, payment, and Biteship credentials.
+6. Point provider webhooks at:
    - WhatsApp: `/api/webhooks/whatsapp` (verify token = `WHATSAPP_WEBHOOK_VERIFY_TOKEN`)
    - Payments: `/api/webhooks/payment`
    - Shipping: `/api/webhooks/shipping`
-6. Deploy to Vercel.
+7. Deploy to Vercel.
 
 ## Modules
 

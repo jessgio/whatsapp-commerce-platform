@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createCartOrderFromInbound } from "@/lib/checkout-order";
+import { parseWhatsAppOrder } from "@/lib/checkout";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { parseInbound, verifyWebhook } from "@/lib/integrations/whatsapp";
@@ -26,6 +28,11 @@ export async function POST(req: NextRequest) {
   if (!isSupabaseConfigured()) {
     // Demo mode: acknowledge so Meta doesn't retry; log for visibility.
     console.info("[webhook:whatsapp] inbound (demo)", inbound.length, "messages");
+    for (const msg of inbound) {
+      if (parseWhatsAppOrder(msg.raw)) {
+        console.info("[webhook:whatsapp] cart order (demo)", msg.waId, msg.text);
+      }
+    }
     return NextResponse.json({ ok: true, received: inbound.length });
   }
 
@@ -62,12 +69,38 @@ export async function POST(req: NextRequest) {
 
     if (!conv) continue;
 
-    // 3) Append the inbound message.
+    const isOrder = msg.type === "order" && Boolean(parseWhatsAppOrder(msg.raw));
+
+    // 3) Cart submit → draft order + checkout link (idempotent via webhook_events).
+    // Run before the inbound-message dedupe so a failed create can succeed on retry.
+    if (isOrder) {
+      await createCartOrderFromInbound({
+        supabase,
+        customerId: customer.id,
+        conversationId: conv.id,
+        waId: msg.waId,
+        raw: msg.raw,
+        waMessageId: msg.messageId,
+        timestamp: msg.timestamp,
+      });
+    }
+
+    // 4) Append the inbound message (skip duplicates).
+    if (msg.messageId) {
+      const { data: existing } = await supabase
+        .from("messages")
+        .select("id")
+        .eq("wa_message_id", msg.messageId)
+        .maybeSingle();
+      if (existing) continue;
+    }
+
     await supabase.from("messages").insert({
       conversation_id: conv.id,
       direction: "in",
-      kind: msg.type === "text" ? "text" : "system",
+      kind: isOrder ? "order" : msg.type === "text" ? "text" : "system",
       body: msg.text,
+      wa_message_id: msg.messageId,
       created_at: msg.timestamp,
     });
   }

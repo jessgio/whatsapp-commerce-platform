@@ -69,16 +69,48 @@ export async function getCustomerAddresses(customerId: string): Promise<Address[
 /* ---------- Conversations & messages ---------- */
 
 export async function listConversations(): Promise<Conversation[]> {
+  if (isSupabaseConfigured()) {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase
+      .from("conversations")
+      .select(
+        "*, customers!conversations_customer_id_fkey(name, wa_id), users!conversations_assignee_id_fkey(name)",
+      )
+      .order("last_message_at", { ascending: false })
+      .limit(200);
+    if (data) return data.map(mapConversation);
+  }
   return DEMO_CONVERSATIONS.slice().sort(
     (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime(),
   );
 }
 
 export async function getConversation(id: string): Promise<Conversation | null> {
+  if (isSupabaseConfigured()) {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase
+      .from("conversations")
+      .select(
+        "*, customers!conversations_customer_id_fkey(name, wa_id), users!conversations_assignee_id_fkey(name)",
+      )
+      .eq("id", id)
+      .maybeSingle();
+    if (data) return mapConversation(data);
+    return null;
+  }
   return DEMO_CONVERSATIONS.find((c) => c.id === id) ?? null;
 }
 
 export async function listMessages(conversationId: string): Promise<Message[]> {
+  if (isSupabaseConfigured()) {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true });
+    if (data) return data.map(mapMessage);
+  }
   return demoMessages(conversationId);
 }
 
@@ -96,16 +128,51 @@ export async function listProducts(): Promise<Product[]> {
 /* ---------- Orders ---------- */
 
 export async function listOrders(): Promise<Order[]> {
+  if (isSupabaseConfigured()) {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase
+      .from("orders")
+      .select(
+        "*, customers!orders_customer_id_fkey(name), order_items(product_id, sku, name, qty, unit_price)",
+      )
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (data) return data.map(mapOrder);
+  }
   return DEMO_ORDERS.slice().sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 }
 
 export async function getOrder(id: string): Promise<Order | null> {
+  if (isSupabaseConfigured()) {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase
+      .from("orders")
+      .select(
+        "*, customers!orders_customer_id_fkey(name), order_items(product_id, sku, name, qty, unit_price)",
+      )
+      .eq("id", id)
+      .maybeSingle();
+    if (data) return mapOrder(data);
+    return null;
+  }
   return DEMO_ORDERS.find((o) => o.id === id) ?? null;
 }
 
 export async function listOrdersForCustomer(customerId: string): Promise<Order[]> {
+  if (isSupabaseConfigured()) {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase
+      .from("orders")
+      .select(
+        "*, customers!orders_customer_id_fkey(name), order_items(product_id, sku, name, qty, unit_price)",
+      )
+      .eq("customer_id", customerId)
+      .order("created_at", { ascending: false });
+    if (data) return data.map(mapOrder);
+    return [];
+  }
   return DEMO_ORDERS.filter((o) => o.customerId === customerId);
 }
 
@@ -131,15 +198,17 @@ export async function listNotices(): Promise<WarehouseNotice[]> {
 
 /** Orders that are paid/allocated and have a label affixed — ready to pack. */
 export async function listPackableOrders(): Promise<Order[]> {
-  return DEMO_ORDERS.filter(
+  const orders = await listOrders();
+  return orders.filter(
     (o) => ["paid", "allocated"].includes(o.status) && o.labelNumber,
   );
 }
 
 export async function findOrderByLabel(label: string): Promise<Order | null> {
   const norm = label.trim().toLowerCase();
+  const orders = await listOrders();
   return (
-    DEMO_ORDERS.find(
+    orders.find(
       (o) =>
         o.labelNumber?.toLowerCase() === norm || o.code.toLowerCase() === norm,
     ) ?? null
@@ -217,6 +286,80 @@ function mapProduct(r: any): Product {
     catalogSync: r.catalog_sync ?? "pending",
     units30d: r.units_30d ?? 0,
     unitsPrev30d: r.units_prev_30d ?? 0,
+  };
+}
+
+function mapConversation(r: any): Conversation {
+  const customer = r.customers ?? r.customer ?? null;
+  const assignee = r.users ?? r.assignee ?? null;
+  return {
+    id: r.id,
+    customerId: r.customer_id,
+    customerName: customer?.name ?? "Unknown",
+    customerWaId: customer?.wa_id ?? "",
+    assigneeId: r.assignee_id,
+    assigneeName: assignee?.name ?? null,
+    status: r.status,
+    unread: r.unread ?? 0,
+    lastMessagePreview: r.last_message_preview ?? "",
+    lastMessageAt: r.last_message_at ?? r.created_at,
+    lastInboundAt: r.last_inbound_at,
+    firstResponseSeconds: r.first_response_seconds,
+    topic: r.topic,
+  };
+}
+
+function mapMessage(r: any): Message {
+  return {
+    id: r.id,
+    conversationId: r.conversation_id,
+    direction: r.direction,
+    kind: r.kind ?? "text",
+    body: r.body ?? "",
+    createdAt: r.created_at,
+    authorName: r.author_name,
+    status: r.status ?? null,
+  };
+}
+
+function mapOrder(r: any): Order {
+  const customer = Array.isArray(r.customers) ? r.customers[0] : r.customers;
+  const items = (r.order_items ?? r.items ?? []).map((it: any) => ({
+    productId: it.product_id ?? "",
+    sku: it.sku ?? "",
+    name: it.name ?? it.sku ?? "Item",
+    qty: Number(it.qty ?? 0),
+    unitPrice: Number(it.unit_price ?? it.unitPrice ?? 0),
+  }));
+  const snap = r.shipping_address_snapshot ?? null;
+  return {
+    id: r.id,
+    code: r.code,
+    customerId: r.customer_id,
+    customerName: customer?.name ?? r.customer_name ?? "Unknown",
+    status: r.status,
+    paymentStatus: r.payment_status,
+    paymentProvider: r.payment_provider ?? null,
+    paymentLink: r.payment_link ?? null,
+    channel: r.channel === "agent" ? "agent" : "whatsapp_cart",
+    items,
+    subtotal: Number(r.subtotal ?? 0),
+    shippingCost: Number(r.shipping_cost ?? 0),
+    total: Number(r.total ?? 0),
+    shippingAddress: snap
+      ? {
+          recipientName: snap.recipientName ?? snap.recipient_name ?? "",
+          line1: snap.line1 ?? "",
+          city: snap.city ?? "",
+          postalCode: snap.postalCode ?? snap.postal_code ?? "",
+        }
+      : null,
+    courier: r.courier ?? null,
+    trackingNumber: r.tracking_number ?? null,
+    labelNumber: r.label_number ?? null,
+    flaggedIssue: r.flagged_issue ?? null,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at ?? r.created_at,
   };
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */

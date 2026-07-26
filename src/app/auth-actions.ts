@@ -1,12 +1,19 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { isSupabaseConfigured } from "@/lib/env";
-import { isAllowedStaffEmail } from "@/lib/auth-policy";
+import { isAllowedStaffEmail, STAFF_EMAIL_DOMAIN } from "@/lib/auth-policy";
 import { createSupabaseAdminClient, createSupabaseServerClient } from "@/lib/supabase/server";
 import { DEMO_COOKIE, getCurrentUser } from "@/lib/auth";
 import { DEMO_USERS } from "@/lib/demo/data";
+
+function requestOrigin(headerStore: Headers): string {
+  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host");
+  if (!host) return "http://localhost:3000";
+  const proto = headerStore.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
 
 export async function signInDemo(userId: string) {
   const user = DEMO_USERS.find((u) => u.id === userId);
@@ -19,6 +26,30 @@ export async function signInDemo(userId: string) {
     maxAge: 60 * 60 * 24 * 7,
   });
   redirect(user.role === "warehouse" ? "/warehouse" : user.role === "cs" ? "/cs-dashboard" : "/dashboard");
+}
+
+export async function signInWithGoogle() {
+  if (!isSupabaseConfigured()) redirect("/login");
+
+  const origin = requestOrigin(await headers());
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${origin}/auth/callback`,
+      queryParams: {
+        hd: STAFF_EMAIL_DOMAIN,
+        prompt: "select_account",
+      },
+    },
+  });
+
+  if (error || !data.url) {
+    redirect(
+      `/login?error=${encodeURIComponent(error?.message ?? "Could not start Google sign-in.")}`,
+    );
+  }
+  redirect(data.url);
 }
 
 export async function signInWithPassword(formData: FormData) {

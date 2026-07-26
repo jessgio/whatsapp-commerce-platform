@@ -2,10 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { dataMode } from "@/lib/env";
+import { STAFF_EMAIL_DOMAIN } from "@/lib/auth-policy";
 import { ROLE_LABELS } from "@/lib/rbac";
 import { DEMO_USERS } from "@/lib/demo/data";
 import { Avatar } from "@/components/ui";
-import { signInDemo, signInWithPassword } from "@/app/auth-actions";
+import { GoogleIcon } from "@/components/google-icon";
+import { signInDemo, signInWithGoogle, signInWithPassword } from "@/app/auth-actions";
 
 export default async function LoginPage({
   searchParams,
@@ -59,12 +61,32 @@ export default async function LoginPage({
 
           {mode === "supabase" ? (
             <>
-              <form action={signInWithPassword} className="mt-6 space-y-3">
+              <form action={signInWithGoogle} className="mt-6">
+                <button
+                  type="submit"
+                  className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-merlot hover:bg-surface-muted"
+                >
+                  <GoogleIcon />
+                  Continue with Google
+                </button>
+              </form>
+              <p className="mt-2 text-center text-xs text-muted">
+                Use your <span className="font-medium text-foreground">@{STAFF_EMAIL_DOMAIN}</span>{" "}
+                Google account.
+              </p>
+
+              <div className="my-5 flex items-center gap-3">
+                <span className="h-px flex-1 bg-border" />
+                <span className="text-xs uppercase tracking-wide text-muted">or</span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+
+              <form action={signInWithPassword} className="space-y-3">
                 <input
                   name="email"
                   type="email"
                   required
-                  placeholder="you@aerisbeaute.com"
+                  placeholder={`you@${STAFF_EMAIL_DOMAIN}`}
                   className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-merlot"
                 />
                 <input
@@ -75,7 +97,7 @@ export default async function LoginPage({
                   className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-merlot"
                 />
                 <button className="w-full rounded-lg bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-merlot-600">
-                  Sign in
+                  Sign in with password
                 </button>
               </form>
               <p className="mt-4 text-center text-sm text-muted">

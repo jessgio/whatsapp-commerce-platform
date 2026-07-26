@@ -5,6 +5,7 @@ import { requirePermission } from "@/lib/guard";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCustomer, getOrder } from "@/lib/data/repo";
 import { createPaymentLink } from "@/lib/integrations/payments";
+import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { DEMO_NOTICES, DEMO_ORDERS } from "@/lib/demo/data";
 import type { OrderStatus } from "@/lib/types";
 
@@ -24,7 +25,29 @@ export async function generatePaymentLink(orderId: string) {
     customerEmail: customer?.email,
   });
 
-  if (result.ok && !isSupabaseConfigured()) {
+  if (!result.ok || !result.paymentUrl) return;
+
+  if (isSupabaseConfigured()) {
+    const supabase = createSupabaseAdminClient();
+    const now = new Date().toISOString();
+    await supabase
+      .from("orders")
+      .update({
+        payment_link: result.paymentUrl,
+        payment_provider: result.provider,
+        payment_status: "pending",
+        updated_at: now,
+      })
+      .eq("id", orderId);
+
+    await supabase.from("payments").insert({
+      order_id: orderId,
+      provider: result.provider,
+      reference: result.reference ?? null,
+      amount: order.total,
+      status: "pending",
+    });
+  } else {
     const o = DEMO_ORDERS.find((x) => x.id === orderId);
     if (o) {
       o.paymentLink = result.paymentUrl ?? null;
@@ -37,7 +60,25 @@ export async function generatePaymentLink(orderId: string) {
 
 export async function advanceStatus(orderId: string) {
   await requirePermission("orders.edit");
-  if (isSupabaseConfigured()) return;
+  if (isSupabaseConfigured()) {
+    const order = await getOrder(orderId);
+    if (!order) return;
+    const idx = FLOW.indexOf(order.status);
+    if (idx < 0 || idx >= FLOW.length - 1) return;
+    const next = FLOW[idx + 1];
+    const supabase = createSupabaseAdminClient();
+    await supabase
+      .from("orders")
+      .update({
+        status: next,
+        ...(next === "paid" ? { payment_status: "paid" } : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", orderId);
+    revalidatePath(`/orders/${orderId}`);
+    revalidatePath("/orders");
+    return;
+  }
   const o = DEMO_ORDERS.find((x) => x.id === orderId);
   if (!o) return;
   const idx = FLOW.indexOf(o.status);

@@ -83,7 +83,17 @@ export interface InboundMessage {
   text: string;
   type: string;
   timestamp: string;
+  messageId: string | null;
   raw: unknown;
+}
+
+function inboundPreview(msg: any): string {
+  if (msg.type === "order") {
+    const items = msg.order?.product_items;
+    const count = Array.isArray(items) ? items.length : 0;
+    return count > 0 ? `[order] ${count} item(s)` : "[order]";
+  }
+  return msg.text?.body ?? msg.button?.text ?? `[${msg.type}]`;
 }
 
 export function parseInbound(payload: any): InboundMessage[] {
@@ -98,9 +108,10 @@ export function parseInbound(payload: any): InboundMessage[] {
         out.push({
           waId: msg.from,
           name: contact?.profile?.name ?? null,
-          text: msg.text?.body ?? msg.button?.text ?? `[${msg.type}]`,
+          text: inboundPreview(msg),
           type: msg.type,
           timestamp: new Date(Number(msg.timestamp) * 1000).toISOString(),
+          messageId: typeof msg.id === "string" ? msg.id : null,
           raw: msg,
         });
       }

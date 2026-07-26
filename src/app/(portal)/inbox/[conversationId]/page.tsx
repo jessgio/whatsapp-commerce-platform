@@ -5,8 +5,8 @@ import { getConversation, listMessages } from "@/lib/data/repo";
 import { Avatar, Badge } from "@/components/ui";
 import { ConvStatusBadge } from "@/components/status";
 import { Composer } from "@/components/inbox/composer";
-import { cn } from "@/lib/utils";
-import { formatDateTime, windowMinutesLeft } from "@/lib/format";
+import { MessageThread } from "@/components/inbox/message-thread";
+import { windowMinutesLeft } from "@/lib/format";
 
 export default async function ConversationPage({
   params,
@@ -49,44 +49,7 @@ export default async function ConversationPage({
         </div>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto bg-background px-4 py-5">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={cn("flex", msg.direction === "out" ? "justify-end" : "justify-start")}
-          >
-            <div
-              className={cn(
-                "max-w-[72%] rounded-2xl px-3.5 py-2 text-sm shadow-[0_1px_1px_rgba(45,43,42,0.05)]",
-                msg.kind === "order"
-                  ? "border border-merlot/30 bg-merlot/5 text-foreground"
-                  : msg.direction === "out"
-                    ? "bg-merlot text-primary-foreground"
-                    : "bg-surface text-foreground",
-              )}
-            >
-              {msg.kind === "order" && (
-                <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-merlot">
-                  Order created
-                </div>
-              )}
-              <p className="whitespace-pre-wrap">{msg.body}</p>
-              <div
-                className={cn(
-                  "mt-1 text-[10px]",
-                  msg.direction === "out" && msg.kind !== "order"
-                    ? "text-primary-foreground/70"
-                    : "text-muted",
-                )}
-              >
-                {msg.authorName ? `${msg.authorName} · ` : ""}
-                {formatDateTime(msg.createdAt)}
-                {msg.status ? ` · ${msg.status}` : ""}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <MessageThread messages={messages} />
 
       <Composer conversationId={conv.id} windowOpen={windowOpen} />
     </div>

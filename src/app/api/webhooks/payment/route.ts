@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { env, isSupabaseConfigured } from "@/lib/env";
+import { sendOrderPaidReceipt } from "@/lib/order-receipt";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
 /**
  * Payment notification handler (Midtrans + Xendit shapes). Idempotent via the
- * `webhook_events` table. Marks the matching order paid/expired.
+ * `webhook_events` table. Marks the matching order paid/expired and sends a
+ * WhatsApp receipt on successful payment.
  */
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -19,9 +21,15 @@ export async function POST(req: NextRequest) {
     orderCode = body.order_id;
     // Verify Midtrans signature_key = sha512(order_id+status_code+gross_amount+serverKey)
     const expected = createHash("sha512")
-      .update(`${body.order_id}${body.status_code}${body.gross_amount}${env.payments.midtransServerKey}`)
+      .update(
+        `${body.order_id}${body.status_code}${body.gross_amount}${env.payments.midtransServerKey}`,
+      )
       .digest("hex");
-    if (env.payments.midtransServerKey && body.signature_key && body.signature_key !== expected) {
+    if (
+      env.payments.midtransServerKey &&
+      body.signature_key &&
+      body.signature_key !== expected
+    ) {
       return NextResponse.json({ ok: false, error: "bad signature" }, { status: 403 });
     }
     paid = ["capture", "settlement"].includes(body.transaction_status);
@@ -48,14 +56,39 @@ export async function POST(req: NextRequest) {
     .insert({ id: eventId, source: "payment", payload: body });
   if (dupe) return NextResponse.json({ ok: true, duplicate: true });
 
+  const now = new Date().toISOString();
   await supabase
     .from("orders")
     .update({
       payment_status: paid ? "paid" : expired ? "expired" : "pending",
-      status: paid ? "paid" : undefined,
-      updated_at: new Date().toISOString(),
+      ...(paid ? { status: "paid" } : {}),
+      updated_at: now,
     })
     .eq("code", orderCode);
+
+  const { data: orderRow } = await supabase
+    .from("orders")
+    .select("id")
+    .eq("code", orderCode)
+    .maybeSingle();
+
+  if (orderRow?.id) {
+    await supabase
+      .from("payments")
+      .update({
+        status: paid ? "paid" : expired ? "expired" : "pending",
+      })
+      .eq("order_id", orderRow.id)
+      .eq("status", "pending");
+  }
+
+  if (paid) {
+    try {
+      await sendOrderPaidReceipt(supabase, orderCode);
+    } catch (e) {
+      console.error("[webhook:payment] receipt send failed", e);
+    }
+  }
 
   return NextResponse.json({ ok: true });
 }

@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { dataMode } from "@/lib/env";
 import { STAFF_EMAIL_DOMAIN } from "@/lib/auth-policy";
-import { signUpWithPassword } from "@/app/auth-actions";
+import { GoogleIcon } from "@/components/google-icon";
+import { signInWithGoogle, signUpWithPassword } from "@/app/auth-actions";
 
 export default async function SignUpPage({
   searchParams,
@@ -29,7 +30,7 @@ export default async function SignUpPage({
           <div className="space-y-3">
             <h2 className="text-2xl font-semibold leading-snug">Join the team workspace.</h2>
             <p className="text-sm text-taupe">
-              Create your account with your company email. Access is limited to{" "}
+              Sign up with your company Google account. Access is limited to{" "}
               <span className="font-medium text-cream">@{STAFF_EMAIL_DOMAIN}</span> addresses.
             </p>
           </div>
@@ -49,15 +50,36 @@ export default async function SignUpPage({
           </div>
           <h1 className="text-xl font-semibold text-foreground">Create account</h1>
           <p className="mt-1 text-sm text-muted">
-            Full name, <span className="font-medium text-foreground">@{STAFF_EMAIL_DOMAIN}</span> email,
-            and password.
+            Fastest with Google — or use your{" "}
+            <span className="font-medium text-foreground">@{STAFF_EMAIL_DOMAIN}</span> email and a
+            password.
           </p>
 
           {error && (
             <p className="mt-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
           )}
 
-          <form action={signUpWithPassword} className="mt-6 space-y-3">
+          <form action={signInWithGoogle} className="mt-6">
+            <button
+              type="submit"
+              className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-merlot hover:bg-surface-muted"
+            >
+              <GoogleIcon />
+              Continue with Google
+            </button>
+          </form>
+          <p className="mt-2 text-center text-xs text-muted">
+            Only <span className="font-medium text-foreground">@{STAFF_EMAIL_DOMAIN}</span> Google
+            accounts are accepted.
+          </p>
+
+          <div className="my-5 flex items-center gap-3">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-xs uppercase tracking-wide text-muted">or</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+
+          <form action={signUpWithPassword} className="space-y-3">
             <div>
               <label htmlFor="name" className="mb-1 block text-xs font-medium text-muted">
                 Full name
@@ -102,7 +124,7 @@ export default async function SignUpPage({
               />
             </div>
             <button className="w-full rounded-lg bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-merlot-600">
-              Create account
+              Create account with password
             </button>
           </form>
 

@@ -13,9 +13,17 @@ const FORM_HOSTS = new Set(
     .filter(Boolean),
 );
 
-const PUBLIC_PATHS = ["/login", "/signup", "/api/webhooks", "/api/public", "/daftar"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/signup",
+  "/auth/callback",
+  "/api/webhooks",
+  "/api/public",
+  "/daftar",
+  "/checkout",
+];
 
-const FORM_ALLOWED_PREFIXES = ["/daftar", "/api/public"];
+const FORM_ALLOWED_PREFIXES = ["/daftar", "/checkout", "/api/public"];
 
 function isFormHost(host: string): boolean {
   const hostname = host.split(":")[0]?.toLowerCase() ?? "";
