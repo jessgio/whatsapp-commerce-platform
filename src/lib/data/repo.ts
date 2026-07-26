@@ -167,6 +167,7 @@ function mapCustomer(r: any): Customer {
     phone: r.phone,
     email: r.email,
     city: r.city,
+    birthDate: r.birth_date ?? null,
     consentStatus: r.consent_status,
     consentChannel: r.consent_channel,
     segments: r.segments ?? [],
@@ -175,6 +176,8 @@ function mapCustomer(r: any): Customer {
     orderCount: r.order_count ?? 0,
     firstSeenAt: r.first_seen_at,
     lastOrderAt: r.last_order_at,
+    termsAcceptedAt: r.terms_accepted_at ?? null,
+    termsVersion: r.terms_version ?? null,
     createdAt: r.created_at,
   };
 }

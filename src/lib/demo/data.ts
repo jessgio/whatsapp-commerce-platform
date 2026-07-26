@@ -119,6 +119,7 @@ export const DEMO_CUSTOMERS: Customer[] = Array.from({ length: 64 }, (_, i) => {
     phone: `+62 812-${String(1000 + i).slice(0, 4)}-${String(2000 + i * 3).slice(0, 4)}`,
     email: i % 3 === 0 ? `${name.split(" ")[0].toLowerCase()}@mail.com` : null,
     city,
+    birthDate: i % 4 === 0 ? `199${i % 10}-0${(i % 9) + 1}-${String(10 + (i % 18)).padStart(2, "0")}` : null,
     consentStatus: consent as Customer["consentStatus"],
     consentChannel: pick(["click_to_chat", "web_form", "ad", "import"], i) as Customer["consentChannel"],
     segments: orderCount >= 5 ? ["VIP", "Repeat"] : orderCount > 0 ? ["Repeat"] : ["New"],
@@ -127,6 +128,8 @@ export const DEMO_CUSTOMERS: Customer[] = Array.from({ length: 64 }, (_, i) => {
     orderCount,
     firstSeenAt: daysAgo(60 - (i % 55)),
     lastOrderAt: orderCount > 0 ? daysAgo((i * 2) % 40) : null,
+    termsAcceptedAt: null,
+    termsVersion: null,
     createdAt: daysAgo(60 - (i % 55)),
   };
 });

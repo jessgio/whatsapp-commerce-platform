@@ -18,6 +18,7 @@ export interface Customer {
   phone: string;
   email: string | null;
   city: string | null;
+  birthDate: string | null; // YYYY-MM-DD
   consentStatus: ConsentStatus;
   consentChannel: ConsentChannel;
   segments: string[];
@@ -26,6 +27,8 @@ export interface Customer {
   orderCount: number;
   firstSeenAt: string;
   lastOrderAt: string | null;
+  termsAcceptedAt: string | null;
+  termsVersion: string | null;
   createdAt: string;
 }
 

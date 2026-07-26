@@ -40,6 +40,9 @@ export default async function CustomerDetailPage({
               <span>·</span>
               <span>{canSeePii ? customer.phone : "phone hidden"}</span>
               {customer.email && canSeePii && <span>· {customer.email}</span>}
+              {customer.birthDate && canSeePii && (
+                <span>· Lahir {formatDate(customer.birthDate)}</span>
+              )}
             </div>
           </div>
         </div>
