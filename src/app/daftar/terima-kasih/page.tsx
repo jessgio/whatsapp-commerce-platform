@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
-import { BrandMark } from "@/components/brand-mark";
 import { LEAD_DISCOUNT_CODE } from "@/lib/lead-offer";
 
 export const metadata: Metadata = {
@@ -9,38 +9,84 @@ export const metadata: Metadata = {
 
 export default function TerimaKasihPage() {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background">
+    <div className="relative min-h-screen overflow-hidden bg-[#2a1a14]">
+      <Image
+        src="/images/leather-bg.png"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover object-center"
+        aria-hidden
+      />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(111,44,63,0.14),_transparent_55%),radial-gradient(ellipse_at_bottom_right,_rgba(180,158,142,0.28),_transparent_50%)]"
+        className="pointer-events-none absolute inset-0 bg-black/20"
       />
       <div className="relative mx-auto flex min-h-screen w-full max-w-lg flex-col items-center justify-center px-4 py-10 text-center">
-        <div className="animate-fade-in w-full rounded-[20px] border border-border bg-surface p-8 shadow-[0_12px_40px_rgba(45,43,42,0.10)]">
+        <div className="animate-fade-in w-full rounded-[20px] border border-border bg-surface p-8 shadow-[0_16px_48px_rgba(0,0,0,0.35)]">
           <div className="mx-auto mb-5 flex justify-center">
-            <BrandMark size={48} className="rounded-full" />
+            <Image
+              src="/images/aeris-logo-transparent.png"
+              alt="Aeris"
+              width={979}
+              height={206}
+              className="h-auto w-44 object-contain"
+              priority
+            />
           </div>
-          <p className="text-sm font-medium uppercase tracking-wide text-merlot">
-            Aeris Beauté
+          <div className="mb-6 overflow-hidden rounded-xl">
+            <Image
+              src="/images/terima-kasih-banner-v2.png"
+              alt="Aeris Beauté Travel Series"
+              width={1024}
+              height={568}
+              className="h-auto w-full object-cover"
+              priority
+            />
+          </div>
+          <h1 className="text-2xl font-semibold text-foreground">Terima kasih!</h1>
+          <p className="mt-3 text-base font-semibold text-foreground">
+            You’re in! Welcome to Aeris!
           </p>
-          <h1 className="mt-2 text-2xl font-semibold text-foreground">Terima kasih!</h1>
+          <p className="mt-3 text-sm text-muted">
+            Terima kasih telah menjadi bagian dari Aeris Beauté.
+          </p>
           <p className="mt-2 text-sm text-muted">
-            Data Anda sudah kami terima. Gunakan kode diskon di bawah ini untuk
-            pembelian berikutnya. Kami juga mengirimkan kode yang sama ke email
-            Anda.
+            Sebagai sambutan dari kami, nikmati 15% OFF untuk pembelian Anda
+            berikutnya di toko{" "}
+            <a
+              href="https://shopee.co.id/aerisbeaute"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-foreground underline underline-offset-2 hover:text-merlot"
+            >
+              Shopee
+            </a>{" "}
+            resmi kami:
           </p>
 
-          <div className="mt-8 rounded-xl border border-dashed border-merlot/40 bg-merlot/5 px-4 py-6">
+          <a
+            href="https://shopee.co.id/aerisbeaute"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-8 block rounded-xl border border-dashed border-merlot/40 bg-merlot/5 px-4 py-6 transition-colors hover:border-merlot/60 hover:bg-merlot/10"
+          >
             <p className="text-xs font-medium uppercase tracking-wide text-muted">
               Kode diskon Anda
             </p>
             <p className="mt-2 font-mono text-3xl font-semibold tracking-[0.18em] text-merlot">
               {LEAD_DISCOUNT_CODE}
             </p>
-          </div>
+          </a>
 
           <p className="mt-6 text-xs text-muted">
             Cek inbox (dan folder spam) jika belum melihat emailnya. Simpan atau
             screenshot kode ini juga.
+          </p>
+
+          <p className="mt-4 text-xs italic text-muted">
+            Kode voucher berlaku hingga 30 September 2026.
           </p>
 
           <Link
