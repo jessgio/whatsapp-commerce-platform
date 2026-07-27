@@ -26,23 +26,22 @@ export function CityCombobox({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState<CitySuggestion[]>([]);
+  const [lastValue, setLastValue] = useState(value);
 
-  useEffect(() => {
-    setQuery(value);
-    setSelected(Boolean(value));
-  }, [value]);
-
-  useEffect(() => {
-    if (selected && query === value) {
-      setOptions([]);
-      return;
+  if (value !== lastValue) {
+    setLastValue(value);
+    // Adopt values the parent set (initial load, external reset), but ignore the
+    // empty value we push up ourselves when the user starts editing a confirmed
+    // pick — echoing it back would wipe the keystroke they just typed.
+    if (value || selected) {
+      setQuery(value);
+      setSelected(Boolean(value));
     }
+  }
+
+  useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) {
-      setOptions([]);
-      setLoading(false);
-      return;
-    }
+    if ((selected && query === value) || q.length < 2) return;
 
     const ctrl = new AbortController();
     const timer = window.setTimeout(async () => {
@@ -86,6 +85,7 @@ export function CityCombobox({
   function onInput(next: string) {
     setSelected(false);
     setQuery(next);
+    if (next.trim().length < 2) setOptions([]);
     if (value) onChange("");
   }
 
@@ -141,6 +141,7 @@ export function CityCombobox({
               <button
                 type="button"
                 role="option"
+                aria-selected={false}
                 className="flex w-full px-3 py-2 text-left text-sm text-foreground hover:bg-surface-muted"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => pick(city)}

@@ -242,14 +242,22 @@ export function PackStation({ packable }: { packable: PackableHint[] }) {
 }
 
 function ElapsedTimer({ startedAt, completedAt }: { startedAt: string; completedAt: string | null }) {
-  const [now, setNow] = useState(Date.now());
+  // Reading the clock during render would desync server and client HTML, so the
+  // first sample is taken right after mount instead.
+  const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
     if (completedAt) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
+    const tick = () => setNow(Date.now());
+    const first = window.setTimeout(tick, 0);
+    const t = window.setInterval(tick, 1000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(t);
+    };
   }, [completedAt]);
-  const end = completedAt ? new Date(completedAt).getTime() : now;
-  const secs = Math.max(0, Math.floor((end - new Date(startedAt).getTime()) / 1000));
+  const start = new Date(startedAt).getTime();
+  const end = completedAt ? new Date(completedAt).getTime() : (now ?? start);
+  const secs = Math.max(0, Math.floor((end - start) / 1000));
   const mm = String(Math.floor(secs / 60)).padStart(2, "0");
   const ss = String(secs % 60).padStart(2, "0");
   return (

@@ -1,5 +1,5 @@
-import { useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Linking,
@@ -35,9 +35,9 @@ export default function OrderDetailScreen() {
   const load = useCallback(async () => {
     if (!id) return;
     try {
-      setError(null);
       const data = await fetchOrder(id);
       setOrder(data.order);
+      setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load order.");
     } finally {
@@ -45,10 +45,12 @@ export default function OrderDetailScreen() {
     }
   }, [id]);
 
-  useEffect(() => {
-    setLoading(true);
-    void load();
-  }, [load]);
+  // Refetches on focus, so returning from another screen shows current state.
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
 
   async function run(action: () => Promise<unknown>) {
     setBusy(true);

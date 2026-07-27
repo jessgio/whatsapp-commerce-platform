@@ -128,30 +128,63 @@ export interface InboundMessage {
   raw: unknown;
 }
 
-function inboundPreview(msg: any): string {
+interface RawContact {
+  wa_id?: string;
+  profile?: { name?: string };
+}
+
+interface RawMessage {
+  from?: string;
+  id?: string;
+  type?: string;
+  timestamp?: string | number;
+  text?: { body?: string };
+  button?: { text?: string };
+  order?: { product_items?: unknown[] };
+}
+
+interface WebhookPayload {
+  entry?: Array<{
+    changes?: Array<{
+      value?: { contacts?: RawContact[]; messages?: RawMessage[] };
+    }>;
+  }>;
+}
+
+function inboundPreview(msg: RawMessage): string {
   if (msg.type === "order") {
     const items = msg.order?.product_items;
     const count = Array.isArray(items) ? items.length : 0;
     return count > 0 ? `[order] ${count} item(s)` : "[order]";
   }
-  return msg.text?.body ?? msg.button?.text ?? `[${msg.type}]`;
+  return msg.text?.body ?? msg.button?.text ?? `[${msg.type ?? "unknown"}]`;
 }
 
-export function parseInbound(payload: any): InboundMessage[] {
+function inboundTimestamp(value: RawMessage["timestamp"]): string {
+  const seconds = Number(value);
+  // Meta sends unix seconds; a malformed value would otherwise throw a
+  // RangeError from toISOString and take down the whole batch.
+  if (!Number.isFinite(seconds) || seconds <= 0) return new Date().toISOString();
+  return new Date(seconds * 1000).toISOString();
+}
+
+export function parseInbound(payload: unknown): InboundMessage[] {
   const out: InboundMessage[] = [];
-  const entries = payload?.entry ?? [];
+  // Single cast at the trust boundary: everything below treats the payload as
+  // untrusted and optional.
+  const entries = (payload as WebhookPayload | null)?.entry ?? [];
   for (const entry of entries) {
     for (const change of entry.changes ?? []) {
-      const value = change.value ?? {};
-      const contacts = value.contacts ?? [];
-      for (const msg of value.messages ?? []) {
-        const contact = contacts.find((c: any) => c.wa_id === msg.from);
+      const contacts = change.value?.contacts ?? [];
+      for (const msg of change.value?.messages ?? []) {
+        if (!msg.from) continue;
+        const contact = contacts.find((c) => c.wa_id === msg.from);
         out.push({
           waId: msg.from,
           name: contact?.profile?.name ?? null,
           text: inboundPreview(msg),
-          type: msg.type,
-          timestamp: new Date(Number(msg.timestamp) * 1000).toISOString(),
+          type: msg.type ?? "unknown",
+          timestamp: inboundTimestamp(msg.timestamp),
           messageId: typeof msg.id === "string" ? msg.id : null,
           raw: msg,
         });

@@ -1,5 +1,5 @@
-import { useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -31,10 +31,12 @@ export default function ConversationScreen() {
   const load = useCallback(async () => {
     if (!id) return;
     try {
-      setError(null);
       const data = await fetchConversation(id);
       setConversation(data.conversation);
       setMessages(data.messages);
+      // Cleared on success rather than up front, so a failure banner survives
+      // until a poll actually succeeds instead of blinking every 15s.
+      setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load thread.");
     } finally {
@@ -42,12 +44,14 @@ export default function ConversationScreen() {
     }
   }, [id]);
 
-  useEffect(() => {
-    setLoading(true);
-    void load();
-    const timer = setInterval(() => void load(), 15000);
-    return () => clearInterval(timer);
-  }, [load]);
+  // Focus-scoped so the 15s poll stops while the screen is in the background.
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+      const timer = setInterval(() => void load(), 15000);
+      return () => clearInterval(timer);
+    }, [load]),
+  );
 
   const mins = windowMinutesLeft(conversation?.lastInboundAt ?? null);
   const windowOpen = mins > 0;

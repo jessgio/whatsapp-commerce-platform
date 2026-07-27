@@ -54,11 +54,10 @@ const GROUPS: NavItem["group"][] = [
 
 export function MobileNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  // Store the route the drawer was opened on rather than a boolean, so any
+  // navigation closes it without an effect that re-renders on every route change.
+  const [openedOn, setOpenedOn] = useState<string | null>(null);
+  const open = openedOn === pathname;
 
   useEffect(() => {
     if (!open) return;
@@ -77,7 +76,7 @@ export function MobileNav({ items }: { items: NavItem[] }) {
     <div className="md:hidden">
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => setOpenedOn(pathname)}
         className="rounded-lg p-2 text-muted transition-colors hover:bg-surface-muted hover:text-foreground"
         aria-label="Open navigation"
       >
@@ -90,7 +89,7 @@ export function MobileNav({ items }: { items: NavItem[] }) {
             type="button"
             className="absolute inset-0 bg-black/40"
             aria-label="Close navigation"
-            onClick={() => setOpen(false)}
+            onClick={() => setOpenedOn(null)}
           />
           <aside className="relative z-10 flex h-full w-[min(18rem,85vw)] flex-col bg-sidebar text-sidebar-foreground shadow-xl">
             <div className="flex items-center justify-between gap-2 px-4 py-4">
@@ -105,7 +104,7 @@ export function MobileNav({ items }: { items: NavItem[] }) {
               </div>
               <button
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={() => setOpenedOn(null)}
                 className="rounded-lg p-2 text-sidebar-foreground/70 hover:bg-white/5 hover:text-cream"
                 aria-label="Close navigation"
               >

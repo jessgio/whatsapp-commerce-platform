@@ -24,6 +24,14 @@ const DEMO_COURIERS = [
   { courier: "SiCepat", service: "BEST", description: "Besok Sampai", base: 32000, etd: "1 hari" },
 ];
 
+interface BiteshipPricing {
+  courier_name?: string;
+  courier_service_code?: string;
+  courier_service_name?: string;
+  price?: number;
+  duration?: string;
+}
+
 function configured() {
   return Boolean(env.shipping.biteshipKey);
 }
@@ -60,13 +68,13 @@ export async function getRates(input: RateInput): Promise<CourierRate[]> {
         ],
       }),
     });
-    const json = await res.json();
-    return (json.pricing ?? []).map((p: any) => ({
-      courier: p.courier_name,
-      service: p.courier_service_code,
-      description: p.courier_service_name,
-      cost: p.price,
-      etd: p.duration,
+    const json = (await res.json()) as { pricing?: BiteshipPricing[] };
+    return (json.pricing ?? []).map((p) => ({
+      courier: p.courier_name ?? "",
+      service: p.courier_service_code ?? "",
+      description: p.courier_service_name ?? "",
+      cost: Number(p.price ?? 0),
+      etd: p.duration ?? "",
     }));
   } catch (e) {
     console.error("[shipping] getRates failed", e);
