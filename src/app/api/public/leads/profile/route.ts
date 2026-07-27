@@ -4,21 +4,33 @@ import { getLeadProfileByEditToken } from "@/lib/data/lead-profile";
 import { isSupabaseConfigured } from "@/lib/env";
 import { resolveCanonicalCity } from "@/lib/cities";
 import { parseLeadFields } from "@/lib/lead-validation";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
+/** Edit tokens are the only credential guarding this PII, so cap guessing. */
+const TOKEN_LOOKUP_LIMIT = { scope: "leads:profile", limit: 30, windowSeconds: 3600 };
+
 export async function GET(req: NextRequest) {
+  const limited = await enforceRateLimit(req, TOKEN_LOOKUP_LIMIT);
+  if (limited) return limited;
+
   const token = req.nextUrl.searchParams.get("token")?.trim() ?? "";
   const profile = await getLeadProfileByEditToken(token);
   if (!profile) {
+    // Always 404, never 400: a distinct status for short tokens would confirm
+    // the minimum token length to anyone probing.
     return NextResponse.json(
       { ok: false, error: "Tautan tidak ditemukan atau sudah tidak berlaku." },
-      { status: token.length < 16 ? 400 : 404 },
+      { status: 404 },
     );
   }
   return NextResponse.json({ ok: true, profile });
 }
 
 export async function PATCH(req: NextRequest) {
+  const limited = await enforceRateLimit(req, TOKEN_LOOKUP_LIMIT);
+  if (limited) return limited;
+
   const body = (await req.json().catch(() => null)) as {
     token?: string;
     name?: string;

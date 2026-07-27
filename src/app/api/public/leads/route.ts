@@ -6,6 +6,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { newEditToken } from "@/lib/lead-edit";
 import { resolveLeadDiscountCode } from "@/lib/lead-offer";
 import { parseLeadSubmission } from "@/lib/lead-form-submit";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import type { Customer } from "@/lib/types";
 
@@ -95,6 +96,15 @@ function upsertDemoLead(data: {
 }
 
 export async function POST(req: NextRequest) {
+  // Each accepted submission sends a welcome email, so an unthrottled endpoint
+  // is an email-bomb primitive.
+  const limited = await enforceRateLimit(req, {
+    scope: "leads:submit",
+    limit: 8,
+    windowSeconds: 3600,
+  });
+  if (limited) return limited;
+
   const body = (await req.json().catch(() => null)) as LeadBody | null;
   if (!body) {
     return NextResponse.json(

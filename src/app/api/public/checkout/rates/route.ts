@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { loadCheckoutSession } from "@/lib/checkout-public";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getRates } from "@/lib/integrations/shipping";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 /** POST /api/public/checkout/rates — Biteship (or demo) courier rates. */
 export async function POST(req: NextRequest) {
+  // Every call is a billable Biteship quote.
+  const limited = await enforceRateLimit(req, {
+    scope: "checkout:rates",
+    limit: 60,
+    windowSeconds: 600,
+  });
+  if (limited) return limited;
+
   const body = await req.json().catch(() => null);
   const token = String(body?.token ?? "").trim();
   const postalCode = String(body?.postalCode ?? "").replace(/\D/g, "");

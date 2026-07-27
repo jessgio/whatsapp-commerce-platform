@@ -4,6 +4,7 @@ import { loadCheckoutSession } from "@/lib/checkout-public";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createPaymentLink } from "@/lib/integrations/payments";
 import { getRates } from "@/lib/integrations/shipping";
+import { consumeRateLimit, enforceRateLimit } from "@/lib/rate-limit";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
 type ConfirmBody = {
@@ -56,6 +57,13 @@ function validateAddress(
 
 /** POST /api/public/checkout/confirm — save details, lock shipping, start Midtrans. */
 export async function POST(req: NextRequest) {
+  const limited = await enforceRateLimit(req, {
+    scope: "checkout:confirm:ip",
+    limit: 30,
+    windowSeconds: 600,
+  });
+  if (limited) return limited;
+
   const body = (await req.json().catch(() => null)) as ConfirmBody | null;
   if (!body) {
     return NextResponse.json({ ok: false, error: "Body tidak valid." }, { status: 400 });
@@ -65,6 +73,21 @@ export async function POST(req: NextRequest) {
   if (!token) {
     return NextResponse.json({ ok: false, error: "Token wajib." }, { status: 400 });
   }
+
+  // Also cap per token: this books courier rates and creates payment links, and
+  // a leaked link would otherwise be replayable from any number of addresses.
+  const perToken = await consumeRateLimit(token, {
+    scope: "checkout:confirm:token",
+    limit: 15,
+    windowSeconds: 600,
+  });
+  if (!perToken.allowed) {
+    return NextResponse.json(
+      { ok: false, error: "Terlalu banyak percobaan. Coba lagi sebentar." },
+      { status: 429, headers: { "Retry-After": String(perToken.retryAfterSeconds) } },
+    );
+  }
+
   if (!isSupabaseConfigured()) {
     return NextResponse.json(
       { ok: false, error: "Checkout hanya tersedia saat mode live." },
