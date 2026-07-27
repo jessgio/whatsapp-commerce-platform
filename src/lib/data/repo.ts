@@ -1,7 +1,10 @@
 import "server-only";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { shouldUseSupabaseData } from "@/lib/data/mode";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  createSupabaseAdminClient,
+  createSupabaseServerClient,
+} from "@/lib/supabase/server";
 import {
   DEMO_ADDRESSES,
   DEMO_CASES,
@@ -113,6 +116,40 @@ export async function listConversations(): Promise<Conversation[]> {
   }
   return DEMO_CONVERSATIONS.slice().sort(
     (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime(),
+  );
+}
+
+/**
+ * customer id -> last inbound timestamp, for conversations with inbound
+ * activity since `since`.
+ *
+ * Campaign dispatch needs this to honour WhatsApp's 24h service window. It
+ * reads with the service-role client because dispatch also runs from cron,
+ * where there is no session for the `is_staff()` policy to match, and it
+ * selects two columns rather than reusing listConversations() so the window
+ * check does not pull 200 rows and their joins.
+ */
+export async function listRecentInboundByCustomer(
+  since: Date,
+): Promise<Map<string, string>> {
+  const iso = since.toISOString();
+  if (!shouldUseSupabaseData()) {
+    return new Map(
+      DEMO_CONVERSATIONS.filter(
+        (c) => c.lastInboundAt && c.lastInboundAt >= iso,
+      ).map((c) => [c.customerId, c.lastInboundAt as string]),
+    );
+  }
+  const supabase = createSupabaseAdminClient();
+  const res = await supabase
+    .from("conversations")
+    .select("customer_id, last_inbound_at")
+    .gte("last_inbound_at", iso);
+  const rows = liveRows("listRecentInboundByCustomer", res);
+  return new Map(
+    rows
+      .filter((r) => r.customer_id && r.last_inbound_at)
+      .map((r) => [r.customer_id as string, r.last_inbound_at as string]),
   );
 }
 
@@ -377,7 +414,7 @@ export async function getProductBarcodes(
 /* ---------- Row mappers (snake_case DB -> domain) ---------- */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-function mapCustomer(r: any): Customer {
+export function mapCustomer(r: any): Customer {
   return {
     id: r.id,
     waId: r.wa_id,

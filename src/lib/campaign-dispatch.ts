@@ -6,7 +6,8 @@ import {
   listDueCampaigns,
   saveCampaign,
 } from "@/lib/data/campaigns";
-import { listConversations, listCustomers } from "@/lib/data/repo";
+import { listRecentInboundByCustomer } from "@/lib/data/repo";
+import { listAllSegmentMembers } from "@/lib/data/segment-members";
 import { getSegmentDefinition } from "@/lib/data/segments";
 import {
   getWaInteractiveDesign,
@@ -18,7 +19,6 @@ import {
   sendInteractiveDesign,
   sendTemplate,
 } from "@/lib/integrations/whatsapp";
-import { filterCustomersByRules } from "@/lib/segments";
 import type { Campaign } from "@/lib/campaigns";
 import type { Customer } from "@/lib/types";
 
@@ -59,15 +59,18 @@ async function resolveAudience(campaign: Campaign): Promise<{
   if (!campaign.segmentId) {
     return { ok: false, error: "Select a customer segment first." };
   }
-  const [segment, customers] = await Promise.all([
-    getSegmentDefinition(campaign.segmentId),
-    listCustomers(),
-  ]);
+  const segment = await getSegmentDefinition(campaign.segmentId);
   if (!segment) return { ok: false, error: "Segment not found." };
 
-  const audience = filterCustomersByRules(customers, segment.rules).filter(
-    (c) => c.consentStatus === "opted_in",
-  );
+  // Resolved in Postgres and paged. The old path filtered the first 500
+  // customers in memory, so a campaign to a larger list quietly reached only
+  // the 500 most recent people and reported that as a complete send.
+  const audience = await listAllSegmentMembers(segment.rules, {
+    consentStatus: "opted_in",
+    // Cron carries no session; the caller has already checked marketing.send
+    // or the cron secret.
+    asSystem: true,
+  });
   if (audience.length === 0) {
     return { ok: false, error: "No opted-in customers match this segment." };
   }
@@ -114,12 +117,10 @@ async function dispatchWhatsApp(
       return { sent: 0, failed: 0, skipped: 0, error: "Interactive design missing." };
     }
 
-    const conversations = await listConversations();
-    const inboundByCustomer = new Map(
-      conversations.map((c) => [c.customerId, c.lastInboundAt] as const),
-    );
-
     // Interactive messages are only deliverable inside the 24h service window.
+    const inboundByCustomer = await listRecentInboundByCustomer(
+      new Date(Date.now() - WINDOW_MS),
+    );
     const reachable = audience.filter((c) =>
       inMessagingWindow(inboundByCustomer.get(c.id) ?? null),
     );

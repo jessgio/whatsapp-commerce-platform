@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/guard";
-import { listCustomers } from "@/lib/data/repo";
 import { PageHeader } from "@/components/ui";
 import { SegmentBuilder } from "@/components/customers/segment-builder";
 
 export default async function NewCustomerSegmentPage() {
   await requirePermission("customers.edit");
-  const customers = await listCustomers();
 
   return (
     <div>
@@ -19,7 +17,7 @@ export default async function NewCustomerSegmentPage() {
           ← All segments
         </Link>
       </div>
-      <SegmentBuilder customers={customers} canEdit />
+      <SegmentBuilder canEdit />
     </div>
   );
 }

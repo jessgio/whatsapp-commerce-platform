@@ -1,15 +1,18 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { saveSegmentAction, deleteSegmentAction } from "@/app/(portal)/customers/segments/actions";
+import {
+  deleteSegmentAction,
+  previewSegmentCountAction,
+  saveSegmentAction,
+} from "@/app/(portal)/customers/segments/actions";
 import { Button } from "@/components/ui";
 import {
   OPS_BY_FIELD,
   OP_LABELS,
   SEGMENT_FIELD_OPTIONS,
   emptyRules,
-  countCustomersByRules,
   newCondition,
   type SegmentCondition,
   type SegmentDefinition,
@@ -17,7 +20,6 @@ import {
   type SegmentOp,
   type SegmentRules,
 } from "@/lib/segments";
-import type { Customer } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const inputClass =
@@ -25,11 +27,9 @@ const inputClass =
 
 export function SegmentBuilder({
   initial,
-  customers,
   canEdit,
 }: {
   initial?: SegmentDefinition | null;
-  customers: Customer[];
   canEdit: boolean;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
@@ -40,10 +40,29 @@ export function SegmentBuilder({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const previewCount = useMemo(
-    () => countCustomersByRules(customers, rules),
-    [customers, rules],
-  );
+  // Counted server-side against the whole customer base. Debounced because
+  // every keystroke in a condition value produces a new rules object.
+  // Keyed by the rules object it was counted for, so staleness is derived
+  // rather than tracked in a second state.
+  const [preview, setPreview] = useState<{
+    rules: SegmentRules;
+    count: number;
+  } | null>(null);
+  const previewStale = preview?.rules !== rules;
+
+  useEffect(() => {
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      const result = await previewSegmentCountAction(rules);
+      if (cancelled || !result.ok) return;
+      setPreview({ rules, count: result.count });
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [rules]);
 
   function updateCondition(id: string, patch: Partial<SegmentCondition>) {
     setRules((prev) => ({
@@ -172,7 +191,9 @@ export function SegmentBuilder({
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-merlot/30 bg-merlot/5 px-4 py-3">
         <p className="text-sm text-foreground">
-          <span className="font-semibold">{previewCount}</span>{" "}
+          <span className={cn("font-semibold", previewStale && "text-muted")}>
+            {preview?.count ?? "—"}
+          </span>{" "}
           <span className="text-muted">customers match right now</span>
         </p>
       </div>

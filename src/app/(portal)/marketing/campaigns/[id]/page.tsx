@@ -5,13 +5,12 @@ import { can } from "@/lib/rbac";
 import { getCampaign } from "@/lib/data/campaigns";
 import { listEmailFonts } from "@/lib/data/email-fonts";
 import { listEmailTemplates } from "@/lib/data/email-templates";
-import { listCustomers } from "@/lib/data/repo";
+import { countSegmentMembers } from "@/lib/data/segment-members";
 import { listSegmentDefinitions } from "@/lib/data/segments";
 import {
   listWaInteractiveDesigns,
   listWaTemplateDesigns,
 } from "@/lib/data/whatsapp-designs";
-import { countCustomersByRules } from "@/lib/segments";
 import { PageHeader } from "@/components/ui";
 import { CampaignForm } from "@/components/marketing/campaign-form";
 
@@ -23,11 +22,10 @@ export default async function CampaignDetailPage({
   const user = await requirePermission("marketing.view");
   const { id } = await params;
 
-  const [campaign, segments, customers, templates, interactive, emails, fonts] =
+  const [campaign, segments, templates, interactive, emails, fonts] =
     await Promise.all([
       getCampaign(id),
       listSegmentDefinitions(),
-      listCustomers(),
       listWaTemplateDesigns(),
       listWaInteractiveDesigns(),
       listEmailTemplates(),
@@ -35,23 +33,21 @@ export default async function CampaignDetailPage({
     ]);
   if (!campaign) notFound();
 
-  // A campaign can only reach opted-in customers, so narrow once rather than
-  // re-filtering the whole list for every segment in the dropdown.
-  const reachable = customers.filter((c) => c.consentStatus === "opted_in");
-  const now = new Date();
-
-  const segmentOptions = segments.map((s) => ({
+  // Counted in Postgres. A campaign can only reach opted-in customers, so the
+  // dropdown shows the number that would actually be messaged.
+  const memberCounts = await Promise.all(
+    segments.map((s) => countSegmentMembers(s.rules, { consentStatus: "opted_in" })),
+  );
+  const segmentOptions = segments.map((s, i) => ({
     id: s.id,
     name: s.name,
-    memberCount: countCustomersByRules(reachable, s.rules, now),
+    memberCount: memberCounts[i],
   }));
 
-  const selected = campaign.segmentId
-    ? segments.find((s) => s.id === campaign.segmentId)
-    : null;
-  const audienceCount = selected
-    ? countCustomersByRules(reachable, selected.rules, now)
-    : 0;
+  const selectedIndex = campaign.segmentId
+    ? segments.findIndex((s) => s.id === campaign.segmentId)
+    : -1;
+  const audienceCount = selectedIndex >= 0 ? memberCounts[selectedIndex] : 0;
 
   return (
     <div className="space-y-4">

@@ -2,20 +2,20 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { requirePermission } from "@/lib/guard";
 import { can } from "@/lib/rbac";
-import { listCustomers } from "@/lib/data/repo";
+import { countSegmentMembers } from "@/lib/data/segment-members";
 import { listSegmentDefinitions } from "@/lib/data/segments";
-import { countCustomersByRules, summarizeCondition } from "@/lib/segments";
+import { summarizeCondition } from "@/lib/segments";
 import { Button, PageHeader } from "@/components/ui";
 
 export default async function CustomerSegmentsPage() {
   const user = await requirePermission("customers.view");
-  const [segments, customers] = await Promise.all([
-    listSegmentDefinitions(),
-    listCustomers(),
-  ]);
+  const segments = await listSegmentDefinitions();
+  // Counted in Postgres, in parallel. Doing it in JS meant loading every
+  // customer and re-scanning the list once per segment.
+  const counts = await Promise.all(
+    segments.map((seg) => countSegmentMembers(seg.rules)),
+  );
   const canEdit = can(user.role, "customers.edit");
-  // One clock reading so every segment's count is measured against the same instant.
-  const now = new Date();
 
   return (
     <div>
@@ -62,8 +62,8 @@ export default async function CustomerSegmentsPage() {
               </tr>
             </thead>
             <tbody>
-              {segments.map((seg) => {
-                const count = countCustomersByRules(customers, seg.rules, now);
+              {segments.map((seg, i) => {
+                const count = counts[i];
                 return (
                   <tr
                     key={seg.id}

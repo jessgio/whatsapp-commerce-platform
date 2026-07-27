@@ -2,12 +2,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/guard";
 import { can } from "@/lib/rbac";
-import { listCustomers } from "@/lib/data/repo";
+import {
+  countSegmentMembers,
+  listSegmentMembers,
+} from "@/lib/data/segment-members";
 import { getSegmentDefinition } from "@/lib/data/segments";
-import { filterCustomersByRules } from "@/lib/segments";
 import { Avatar, PageHeader, Table, Td, Th } from "@/components/ui";
 import { SegmentBuilder } from "@/components/customers/segment-builder";
 import { formatDate, formatIDRCompact } from "@/lib/format";
+
+const MEMBER_LIMIT = 100;
 
 export default async function CustomerSegmentDetailPage({
   params,
@@ -16,15 +20,16 @@ export default async function CustomerSegmentDetailPage({
 }) {
   const user = await requirePermission("customers.view");
   const { id } = await params;
-  const [segment, customers] = await Promise.all([
-    getSegmentDefinition(id),
-    listCustomers(),
-  ]);
+  const segment = await getSegmentDefinition(id);
   if (!segment) notFound();
 
   const canEdit = can(user.role, "customers.edit");
   const canSeePii = can(user.role, "customers.pii");
-  const members = filterCustomersByRules(customers, segment.rules);
+  // Total from a COUNT, and only the rows the table actually shows.
+  const [memberCount, members] = await Promise.all([
+    countSegmentMembers(segment.rules),
+    listSegmentMembers(segment.rules, { limit: MEMBER_LIMIT }),
+  ]);
 
   return (
     <div>
@@ -39,15 +44,11 @@ export default async function CustomerSegmentDetailPage({
       </div>
 
       <div className="mb-10">
-        <SegmentBuilder
-          initial={segment}
-          customers={customers}
-          canEdit={canEdit}
-        />
+        <SegmentBuilder initial={segment} canEdit={canEdit} />
       </div>
 
       <h2 className="mb-3 text-sm font-semibold text-foreground">
-        Matching customers ({members.length})
+        Matching customers ({memberCount})
       </h2>
       <Table>
         <thead>
@@ -59,7 +60,7 @@ export default async function CustomerSegmentDetailPage({
           </tr>
         </thead>
         <tbody>
-          {members.slice(0, 100).map((c) => (
+          {members.map((c) => (
             <tr key={c.id} className="hover:bg-surface-muted">
               <Td>
                 <Link
@@ -84,7 +85,16 @@ export default async function CustomerSegmentDetailPage({
               </Td>
             </tr>
           ))}
-          {members.length === 0 && (
+          {memberCount > members.length && (
+            <tr>
+              <Td colSpan={4}>
+                <p className="py-3 text-center text-xs text-muted">
+                  Showing the first {MEMBER_LIMIT} of {memberCount} members.
+                </p>
+              </Td>
+            </tr>
+          )}
+          {memberCount === 0 && (
             <tr>
               <Td colSpan={4}>
                 <p className="py-6 text-center text-sm text-muted">

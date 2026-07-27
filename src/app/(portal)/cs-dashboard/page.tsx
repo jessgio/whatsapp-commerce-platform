@@ -1,7 +1,6 @@
 import { Clock, MessageCircle, TicketCheck, AlertTriangle } from "lucide-react";
 import { requirePermission } from "@/lib/guard";
-import { listCases, listConversations } from "@/lib/data/repo";
-import { computeCsMetrics } from "@/lib/data/analytics";
+import { getCsMetrics } from "@/lib/data/analytics";
 import { formatNumber } from "@/lib/format";
 import {
   Card,
@@ -15,8 +14,7 @@ import { MiniBars } from "@/components/charts-lazy";
 
 export default async function CsDashboardPage() {
   await requirePermission("dashboard.cs");
-  const [conversations, cases] = await Promise.all([listConversations(), listCases()]);
-  const m = computeCsMetrics(conversations, cases);
+  const m = await getCsMetrics();
 
   return (
     <div>

@@ -1,7 +1,6 @@
 import { TrendingUp, TrendingDown, Users, ShoppingBag, Repeat, Wallet } from "lucide-react";
 import { requirePermission } from "@/lib/guard";
-import { listCustomers, listOrders, listProducts } from "@/lib/data/repo";
-import { computeSalesMetrics } from "@/lib/data/analytics";
+import { getSalesMetrics } from "@/lib/data/analytics";
 import { formatIDRCompact, formatNumber } from "@/lib/format";
 import {
   Card,
@@ -15,12 +14,7 @@ import { RevenueTrend, CategoryBars } from "@/components/charts-lazy";
 
 export default async function DashboardPage() {
   await requirePermission("dashboard.sales");
-  const [orders, customers, products] = await Promise.all([
-    listOrders(),
-    listCustomers(),
-    listProducts(),
-  ]);
-  const m = computeSalesMetrics(orders, customers, products);
+  const m = await getSalesMetrics();
 
   return (
     <div>

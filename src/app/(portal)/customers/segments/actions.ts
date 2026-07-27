@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { countSegmentMembers } from "@/lib/data/segment-members";
 import {
   createSegmentDefinition,
   deleteSegmentDefinition,
@@ -67,6 +68,26 @@ export async function saveSegmentAction(input: {
       ok: false,
       error: e instanceof Error ? e.message : "Failed to save segment.",
     };
+  }
+}
+
+/**
+ * Live member count for the rule builder. Counting in Postgres means the
+ * preview reflects the whole customer base rather than the page the browser
+ * happened to be sent, and the builder no longer needs every customer row
+ * shipped into the client bundle to do arithmetic on it.
+ */
+export async function previewSegmentCountAction(
+  rules: unknown,
+): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
+  await requirePermission("customers.view");
+  const parsed = parseRules(rules);
+  if (!parsed) return { ok: true, count: 0 };
+  try {
+    return { ok: true, count: await countSegmentMembers(parsed) };
+  } catch (e) {
+    console.error("[segments] preview failed", e);
+    return { ok: false, error: "Could not count members right now." };
   }
 }
 
