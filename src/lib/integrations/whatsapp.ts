@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import { safeEqual, verifyHmacSha256 } from "@/lib/webhook-auth";
 import { buildInteractivePayload } from "@/lib/integrations/whatsapp-interactive";
 import type { WaInteractiveDesign } from "@/lib/whatsapp-designs";
 
@@ -98,7 +99,22 @@ async function graphSend(payload: Record<string, unknown>): Promise<SendResult> 
 
 /** Verify Meta webhook subscription handshake. */
 export function verifyWebhook(mode: string | null, token: string | null): boolean {
-  return mode === "subscribe" && token === env.whatsapp.verifyToken;
+  if (!env.whatsapp.verifyToken) return false;
+  return mode === "subscribe" && safeEqual(token ?? "", env.whatsapp.verifyToken);
+}
+
+/**
+ * Verify the `X-Hub-Signature-256` HMAC Meta sends with every delivery. Without
+ * this, anyone who knows the URL can inject inbound messages and cart orders.
+ * Returns false when no app secret is configured so the webhook fails closed.
+ */
+export function verifyWebhookSignature(rawBody: string, header: string | null): boolean {
+  return verifyHmacSha256(rawBody, header, env.whatsapp.appSecret);
+}
+
+/** Whether inbound signature verification can run at all. */
+export function webhookSignatureConfigured(): boolean {
+  return Boolean(env.whatsapp.appSecret);
 }
 
 /** Minimal normalizer for inbound webhook payloads -> internal message shape. */

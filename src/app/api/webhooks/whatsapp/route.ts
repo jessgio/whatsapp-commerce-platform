@@ -3,7 +3,15 @@ import { createCartOrderFromInbound } from "@/lib/checkout-order";
 import { parseWhatsAppOrder } from "@/lib/checkout";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
-import { parseInbound, verifyWebhook } from "@/lib/integrations/whatsapp";
+import {
+  parseInbound,
+  verifyWebhook,
+  verifyWebhookSignature,
+  webhookSignatureConfigured,
+} from "@/lib/integrations/whatsapp";
+
+// Signature verification uses node:crypto and the service-role client.
+export const runtime = "nodejs";
 
 // Meta webhook verification handshake.
 export async function GET(req: NextRequest) {
@@ -20,8 +28,27 @@ export async function GET(req: NextRequest) {
 
 // Inbound messages + delivery status updates.
 export async function POST(req: NextRequest) {
-  const payload = await req.json().catch(() => null);
-  if (!payload) return NextResponse.json({ ok: false }, { status: 400 });
+  // Read the raw bytes: the HMAC is over exactly what Meta sent, and
+  // re-serialising parsed JSON would not reproduce it.
+  const rawBody = await req.text();
+
+  if (webhookSignatureConfigured()) {
+    if (!verifyWebhookSignature(rawBody, req.headers.get("x-hub-signature-256"))) {
+      return NextResponse.json({ ok: false, error: "bad signature" }, { status: 403 });
+    }
+  } else if (isSupabaseConfigured()) {
+    // Live data with no way to authenticate the caller: fail closed rather than
+    // let anyone who knows the URL inject messages and cart orders.
+    console.error("[webhook:whatsapp] WHATSAPP_APP_SECRET is not set; rejecting delivery");
+    return NextResponse.json({ ok: false, error: "not configured" }, { status: 503 });
+  }
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(rawBody);
+  } catch {
+    return NextResponse.json({ ok: false }, { status: 400 });
+  }
 
   const inbound = parseInbound(payload);
 

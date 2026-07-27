@@ -22,7 +22,14 @@ export const env = {
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? "",
     wabaId: process.env.WHATSAPP_WABA_ID ?? "",
     catalogId: process.env.WHATSAPP_CATALOG_ID ?? "",
-    verifyToken: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN ?? "merlot-verify",
+    /**
+     * Meta's subscription handshake token. The convenience default only applies
+     * outside production — shipping a known literal would let anyone re-point
+     * the webhook subscription.
+     */
+    verifyToken:
+      process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN ??
+      (process.env.NODE_ENV === "production" ? "" : "merlot-verify"),
     appSecret: process.env.WHATSAPP_APP_SECRET ?? "",
   },
 
@@ -32,11 +39,15 @@ export const env = {
       | "xendit",
     midtransServerKey: process.env.MIDTRANS_SERVER_KEY ?? "",
     xenditSecretKey: process.env.XENDIT_SECRET_KEY ?? "",
+    /** Sent by Xendit as the `x-callback-token` header on every notification. */
+    xenditCallbackToken: process.env.XENDIT_CALLBACK_TOKEN ?? "",
     isProduction: process.env.PAYMENT_IS_PRODUCTION === "true",
   },
 
   shipping: {
     biteshipKey: process.env.BITESHIP_API_KEY ?? "",
+    /** Shared secret expected in the `x-biteship-signature` webhook header. */
+    webhookSecret: process.env.BITESHIP_WEBHOOK_SECRET ?? "",
     originPostalCode: process.env.WAREHOUSE_ORIGIN_POSTAL_CODE ?? "12190",
     originContactName: process.env.WAREHOUSE_ORIGIN_CONTACT_NAME ?? "Warehouse",
     originContactPhone: process.env.WAREHOUSE_ORIGIN_CONTACT_PHONE ?? "081234567890",
