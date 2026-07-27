@@ -74,4 +74,4 @@ node scripts/smoke-staff-api.mjs   # API smoke (needs STAFF_API_ALLOW_DEMO or de
 - `src/lib/data/repo.ts` — single data-access facade (demo ↔ Supabase). UI imports only from here.
 - `src/lib/integrations/*` — WhatsApp, payments, shipping, catalog adapters (real calls + mock fallback).
 - `src/lib/rbac.ts` — role → permission matrix; enforced via `requirePermission()` and RLS.
-- `src/middleware.ts` — auth gating + Supabase session refresh.
+- `src/proxy.ts` — auth gating + Supabase session refresh.

@@ -24,6 +24,21 @@ const PUBLIC_PATHS = [
   "/checkout",
 ];
 
+/**
+ * Routes with no signed-in user to speak of. Skipping the Supabase call here
+ * takes a network roundtrip off every request to the customer funnel, which is
+ * the highest-volume traffic the app sees. The staff-facing public routes
+ * (/login, /signup, /auth/callback) still refresh so an expired-but-renewable
+ * session lands you on your dashboard instead of the login form.
+ */
+const ANONYMOUS_PATHS = [
+  "/api/webhooks",
+  "/api/public",
+  "/api/staff",
+  "/daftar",
+  "/checkout",
+];
+
 const FORM_ALLOWED_PREFIXES = ["/daftar", "/checkout", "/api/public"];
 
 function isFormHost(host: string): boolean {
@@ -31,11 +46,16 @@ function isFormHost(host: string): boolean {
   return FORM_HOSTS.has(hostname);
 }
 
-function isFormAllowedPath(pathname: string): boolean {
-  return FORM_ALLOWED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+/** Exact match or a full path segment, so /loginhack is not treated as /login. */
+function matchesPrefix(pathname: string, prefixes: string[]): boolean {
+  return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
-export async function middleware(request: NextRequest) {
+function isFormAllowedPath(pathname: string): boolean {
+  return matchesPrefix(pathname, FORM_ALLOWED_PREFIXES);
+}
+
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const host = request.headers.get("host") ?? "";
 
@@ -50,12 +70,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
-  // Webhooks / public / staff Bearer APIs don't need cookie session refresh.
-  const skipSessionRefresh =
-    pathname.startsWith("/api/webhooks") ||
-    pathname.startsWith("/api/public") ||
-    pathname.startsWith("/api/staff");
+  const isPublic = matchesPrefix(pathname, PUBLIC_PATHS);
+  const skipSessionRefresh = matchesPrefix(pathname, ANONYMOUS_PATHS);
 
   // Demo mode (no Supabase): gate on the demo cookie only.
   if (!SUPABASE_URL || !SUPABASE_ANON) {
@@ -101,5 +117,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
+  ],
 };
