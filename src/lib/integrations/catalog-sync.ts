@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import { fetchWithTimeout } from "@/lib/http";
 import type { Product } from "@/lib/types";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
@@ -40,8 +41,9 @@ export async function pushCatalog(products: Product[]): Promise<CatalogSyncResul
   }
 
   try {
-    const res = await fetch(`${GRAPH}/${env.whatsapp.catalogId}/items_batch`, {
+    const res = await fetchWithTimeout(`${GRAPH}/${env.whatsapp.catalogId}/items_batch`, {
       method: "POST",
+      timeoutMs: 30_000,
       headers: {
         Authorization: `Bearer ${env.whatsapp.token}`,
         "Content-Type": "application/json",

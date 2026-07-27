@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import { fetchWithTimeout } from "@/lib/http";
 import { safeEqual, verifyHmacSha256 } from "@/lib/webhook-auth";
 import { buildInteractivePayload } from "@/lib/integrations/whatsapp-interactive";
 import type { WaInteractiveDesign } from "@/lib/whatsapp-designs";
@@ -81,8 +82,9 @@ export async function sendInteractiveDesign(
 
 async function graphSend(payload: Record<string, unknown>): Promise<SendResult> {
   try {
-    const res = await fetch(`${GRAPH}/${env.whatsapp.phoneNumberId}/messages`, {
+    const res = await fetchWithTimeout(`${GRAPH}/${env.whatsapp.phoneNumberId}/messages`, {
       method: "POST",
+      timeoutMs: 10_000,
       headers: {
         Authorization: `Bearer ${env.whatsapp.token}`,
         "Content-Type": "application/json",

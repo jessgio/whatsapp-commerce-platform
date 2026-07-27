@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import { fetchWithTimeout } from "@/lib/http";
 
 export interface PaymentLinkInput {
   orderCode: string;
@@ -56,8 +57,9 @@ async function createMidtransLink(
     : "https://app.sandbox.midtrans.com/snap/v1/transactions";
   try {
     const auth = Buffer.from(`${env.payments.midtransServerKey}:`).toString("base64");
-    const res = await fetch(base, {
+    const res = await fetchWithTimeout(base, {
       method: "POST",
+      timeoutMs: 10_000,
       headers: {
         Authorization: `Basic ${auth}`,
         "Content-Type": "application/json",
@@ -93,8 +95,9 @@ async function createXenditInvoice(
 ): Promise<PaymentLinkResult> {
   try {
     const auth = Buffer.from(`${env.payments.xenditSecretKey}:`).toString("base64");
-    const res = await fetch("https://api.xendit.co/v2/invoices", {
+    const res = await fetchWithTimeout("https://api.xendit.co/v2/invoices", {
       method: "POST",
+      timeoutMs: 10_000,
       headers: {
         Authorization: `Basic ${auth}`,
         "Content-Type": "application/json",

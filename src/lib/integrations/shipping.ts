@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import { fetchWithTimeout } from "@/lib/http";
 
 const BASE = "https://api.biteship.com/v1";
 
@@ -48,8 +49,10 @@ export async function getRates(input: RateInput): Promise<CourierRate[]> {
     }));
   }
   try {
-    const res = await fetch(`${BASE}/rates/couriers`, {
+    // Shorter than the others: a customer is waiting on this at checkout.
+    const res = await fetchWithTimeout(`${BASE}/rates/couriers`, {
       method: "POST",
+      timeoutMs: 8_000,
       headers: {
         Authorization: env.shipping.biteshipKey,
         "Content-Type": "application/json",
@@ -115,8 +118,9 @@ export async function createShipment(
     };
   }
   try {
-    const res = await fetch(`${BASE}/orders`, {
+    const res = await fetchWithTimeout(`${BASE}/orders`, {
       method: "POST",
+      timeoutMs: 15_000,
       headers: {
         Authorization: env.shipping.biteshipKey,
         "Content-Type": "application/json",

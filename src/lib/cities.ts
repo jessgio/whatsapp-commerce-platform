@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from "@/lib/http";
+
 export type CitySuggestion = {
   id: number;
   label: string;
@@ -64,8 +66,11 @@ export async function searchCities(
   url.searchParams.set("language", "en");
   url.searchParams.set("format", "json");
 
-  const res = await fetch(url.toString(), {
+  // Short deadline: someone is typing and waiting on this. Cache hits never
+  // reach the network, so the timeout only bounds a genuine upstream stall.
+  const res = await fetchWithTimeout(url.toString(), {
     headers: { Accept: "application/json" },
+    timeoutMs: 6_000,
     next: { revalidate: 86400 },
   });
   if (!res.ok) {
