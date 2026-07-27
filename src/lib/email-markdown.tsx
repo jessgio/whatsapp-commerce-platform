@@ -110,6 +110,33 @@ function renderItalic(text: string, keyPrefix: string): React.ReactNode[] {
 }
 
 /**
+ * Parsed output cache.
+ *
+ * The editor re-renders the preview on every keystroke, and each text block
+ * would otherwise re-run three regex passes per line. Nodes are immutable, so
+ * they are safe to hand back for an identical input.
+ */
+const CACHE_LIMIT = 300;
+const cache = new Map<string, React.ReactNode>();
+
+function readCache(key: string): React.ReactNode | undefined {
+  if (!cache.has(key)) return undefined;
+  // Refresh recency so hot blocks survive eviction.
+  const value = cache.get(key);
+  cache.delete(key);
+  cache.set(key, value);
+  return value;
+}
+
+function writeCache(key: string, value: React.ReactNode) {
+  cache.set(key, value);
+  if (cache.size > CACHE_LIMIT) {
+    const oldest = cache.keys().next().value;
+    if (oldest !== undefined) cache.delete(oldest);
+  }
+}
+
+/**
  * Email-safe markdown: links, bold, italic, and line breaks.
  * Template vars like `{name}` / `{edit_url}` are applied first.
  */
@@ -121,11 +148,18 @@ export function renderEmailMarkdown(
   const text = applyTemplateVars(raw, vars);
   if (!text) return null;
 
+  const key = `${linkColor}\u0000${text}`;
+  const cached = readCache(key);
+  if (cached !== undefined) return cached;
+
   const lines = text.split("\n");
-  return lines.map((line, lineIndex) => (
+  const nodes = lines.map((line, lineIndex) => (
     <React.Fragment key={`line-${lineIndex}`}>
       {lineIndex > 0 ? <br /> : null}
       {renderInline(line, `l${lineIndex}`, linkColor)}
     </React.Fragment>
   ));
+
+  writeCache(key, nodes);
+  return nodes;
 }

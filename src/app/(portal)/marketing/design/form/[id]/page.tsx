@@ -22,8 +22,8 @@ export default async function FormTemplateEditPage({
   const isQrLead = template.id === QR_LEAD_FORM_TEMPLATE_ID;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="flex h-full flex-col gap-3">
+      <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
         <div>
           <Link
             href="/marketing/design/form"

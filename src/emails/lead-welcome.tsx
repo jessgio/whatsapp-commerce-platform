@@ -423,18 +423,37 @@ function renderBlock(
   }
 }
 
-export function LeadWelcomeEmail({
-  name,
-  discountCode,
-  template,
-  editUrl = "",
-  customFonts = [],
-}: LeadWelcomeEmailProps) {
-  const accent = template.accentColor || "#6f2c3f";
-  const vars: TemplateVars = { name, editUrl };
-  const ctx = { vars, discountCode, accent, customFonts };
-  const fontFaceCss = buildFontFaceCss(customFonts);
+export type EmailBlockContext = {
+  vars: TemplateVars;
+  discountCode: string;
+  accent: string;
+  customFonts: EmailCustomFont[];
+};
 
+/**
+ * Single block, memoized for the editor canvas. Only the block being edited
+ * re-renders. The send path calls `renderBlock` directly, so email HTML is
+ * unaffected by this wrapper.
+ */
+export const EmailBlockView = React.memo(function EmailBlockView({
+  block,
+  ctx,
+}: {
+  block: EmailBlock;
+  ctx: EmailBlockContext;
+}) {
+  return <>{renderBlock(block, ctx)}</>;
+});
+
+/** Cream page padding plus the white email card. Shared with the editor canvas. */
+export function EmailFrame({
+  customFonts = [],
+  children,
+}: {
+  customFonts?: EmailCustomFont[];
+  children: React.ReactNode;
+}) {
+  const fontFaceCss = buildFontFaceCss(customFonts);
   return (
     <div
       style={{
@@ -455,9 +474,27 @@ export function LeadWelcomeEmail({
           overflow: "hidden",
         }}
       >
-        {template.blocks.map((block) => renderBlock(block, ctx))}
+        {children}
       </div>
     </div>
+  );
+}
+
+export function LeadWelcomeEmail({
+  name,
+  discountCode,
+  template,
+  editUrl = "",
+  customFonts = [],
+}: LeadWelcomeEmailProps) {
+  const accent = template.accentColor || "#6f2c3f";
+  const vars: TemplateVars = { name, editUrl };
+  const ctx = { vars, discountCode, accent, customFonts };
+
+  return (
+    <EmailFrame customFonts={customFonts}>
+      {template.blocks.map((block) => renderBlock(block, ctx))}
+    </EmailFrame>
   );
 }
 

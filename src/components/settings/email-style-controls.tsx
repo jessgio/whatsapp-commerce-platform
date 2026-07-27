@@ -133,9 +133,9 @@ export function TextStyleControls({
     onChange({ ...s, ...partial });
 
   return (
-    <div className="space-y-2.5 rounded-lg border border-border bg-surface-muted/30 p-3">
+    <div className="@container space-y-2.5 rounded-lg border border-border bg-surface-muted/30 p-3">
       <p className="text-xs font-semibold text-foreground">Typography & layout</p>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 @[260px]:grid-cols-2">
         <div>
           <p className={labelClass}>Font</p>
           <select
@@ -258,9 +258,9 @@ export function ImageStyleControls({
     onChange({ ...s, ...partial });
 
   return (
-    <div className="space-y-2.5 rounded-lg border border-border bg-surface-muted/30 p-3">
+    <div className="@container space-y-2.5 rounded-lg border border-border bg-surface-muted/30 p-3">
       <p className="text-xs font-semibold text-foreground">Image layout</p>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 @[260px]:grid-cols-2">
         <div>
           <p className={labelClass}>Align</p>
           <div className="mt-1">
@@ -284,7 +284,7 @@ export function ImageStyleControls({
             ))}
           </select>
         </div>
-        <div className="sm:col-span-2">
+        <div className="@[260px]:col-span-2">
           <p className={labelClass}>Corner radius</p>
           <input
             type="range"
@@ -333,7 +333,7 @@ export function ButtonStyleControls({
         customFonts={customFonts}
         showLineHeight={false}
       />
-      <div className="space-y-2.5 rounded-lg border border-border bg-surface-muted/30 p-3">
+      <div className="@container space-y-2.5 rounded-lg border border-border bg-surface-muted/30 p-3">
         <p className="text-xs font-semibold text-foreground">Button chrome</p>
         <ColorField
           label="Background"
@@ -341,7 +341,7 @@ export function ButtonStyleControls({
           fallback={accentFallback}
           onChange={(backgroundColor) => patch({ backgroundColor })}
         />
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-2 @[260px]:grid-cols-2">
           <div>
             <p className={labelClass}>Corner radius</p>
             <input
@@ -363,6 +363,30 @@ export function ButtonStyleControls({
             />
             Full width
           </label>
+          <div>
+            <p className={labelClass}>Vertical padding</p>
+            <input
+              type="range"
+              min={8}
+              max={24}
+              value={s.paddingY ?? 12}
+              onChange={(e) => patch({ paddingY: Number(e.target.value) })}
+              className="mt-2 w-full accent-merlot"
+            />
+            <p className="text-[11px] text-muted">{s.paddingY ?? 12}px</p>
+          </div>
+          <div>
+            <p className={labelClass}>Horizontal padding</p>
+            <input
+              type="range"
+              min={12}
+              max={48}
+              value={s.paddingX ?? 22}
+              onChange={(e) => patch({ paddingX: Number(e.target.value) })}
+              className="mt-2 w-full accent-merlot"
+            />
+            <p className="text-[11px] text-muted">{s.paddingX ?? 22}px</p>
+          </div>
         </div>
       </div>
     </div>
@@ -381,7 +405,7 @@ export function DividerStyleControls({
     onChange({ ...s, ...partial });
 
   return (
-    <div className="space-y-2.5 rounded-lg border border-border bg-surface-muted/30 p-3">
+    <div className="@container space-y-2.5 rounded-lg border border-border bg-surface-muted/30 p-3">
       <p className="text-xs font-semibold text-foreground">Divider style</p>
       <ColorField
         label="Color"
@@ -389,7 +413,7 @@ export function DividerStyleControls({
         fallback="#e6dccb"
         onChange={(color) => patch({ color })}
       />
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 @[260px]:grid-cols-2">
         <div>
           <p className={labelClass}>Thickness</p>
           <select

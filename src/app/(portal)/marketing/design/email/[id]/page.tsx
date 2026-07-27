@@ -25,8 +25,8 @@ export default async function EmailTemplateEditPage({
   const isWelcome = template.id === LEAD_WELCOME_TEMPLATE_ID;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="flex h-full flex-col gap-3">
+      <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
         <div>
           <Link
             href="/marketing/design/email"
@@ -46,7 +46,7 @@ export default async function EmailTemplateEditPage({
         {!isWelcome ? <DeleteEmailTemplateButton id={template.id} /> : null}
       </div>
 
-      <p className="text-xs text-muted">
+      <p className="shrink-0 text-xs text-muted">
         Brand fonts:{" "}
         <Link
           href="/marketing/design/email/fonts"
@@ -62,6 +62,7 @@ export default async function EmailTemplateEditPage({
       <EmailTemplateEditor
         initial={template}
         customFonts={fonts}
+        heightClass="min-h-[520px] flex-1"
         successMessage={
           isWelcome
             ? "Welcome template saved. New form submissions will use this design."

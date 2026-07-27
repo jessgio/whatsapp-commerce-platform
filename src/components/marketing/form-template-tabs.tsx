@@ -21,7 +21,15 @@ export function FormTemplateTabs({
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("form");
+  // Editors stay mounted once opened so switching tabs never drops unsaved work.
+  const [visited, setVisited] = useState<Set<Tab>>(() => new Set<Tab>(["form"]));
 
+  function openTab(next: Tab) {
+    setTab(next);
+    setVisited((prev) => (prev.has(next) ? prev : new Set(prev).add(next)));
+  }
+
+  // Read once on mount by the editor's history state, so a fresh object is fine.
   const thankYouAsEmail: EmailTemplate = {
     id: template.id,
     name: template.name,
@@ -34,8 +42,8 @@ export function FormTemplateTabs({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div className="inline-flex rounded-lg border border-border bg-surface p-1">
           {(
             [
@@ -46,7 +54,7 @@ export function FormTemplateTabs({
             <button
               key={id}
               type="button"
-              onClick={() => setTab(id)}
+              onClick={() => openTab(id)}
               className={cn(
                 "rounded-md px-3 py-1.5 text-sm font-medium transition",
                 tab === id
@@ -70,42 +78,52 @@ export function FormTemplateTabs({
       </div>
 
       {!canEdit ? (
-        <p className="rounded-lg bg-surface-muted px-3 py-2 text-sm text-muted">
+        <p className="shrink-0 rounded-lg bg-surface-muted px-3 py-2 text-sm text-muted">
           You can view this template but need marketing edit permission to save
           changes.
         </p>
       ) : null}
 
-      {tab === "form" ? (
+      <div
+        className={
+          tab === "form" ? "flex min-h-0 flex-1 flex-col" : "hidden"
+        }
+      >
         <FormTemplateEditor
-          key={`form-${template.updatedAt}`}
+          key={`form-${template.id}`}
           initial={template}
           canEdit={canEdit}
+          active={tab === "form"}
+          heightClass="min-h-[520px] flex-1"
         />
-      ) : (
-        <EmailTemplateEditor
-          key={`ty-${template.updatedAt}`}
-          initial={thankYouAsEmail}
-          onSave={
-            canEdit
-              ? async (input) => {
-                  const res = await saveFormThankYouAction(input);
-                  if (res.ok) router.refresh();
-                  return res;
-                }
-              : async () => ({
-                  ok: false,
-                  error: "You do not have permission to edit.",
-                })
+      </div>
+
+      {visited.has("thankyou") ? (
+        <div
+          className={
+            tab === "thankyou" ? "flex min-h-0 flex-1 flex-col" : "hidden"
           }
-          showNameField={false}
-          showSubjectField={false}
-          previewVariant="web"
-          discountCode={template.discountCode}
-          successMessage="Thank-you landing page saved."
-          saveLabel="Save thank-you page"
-        />
-      )}
+        >
+          <EmailTemplateEditor
+            key={`ty-${template.id}`}
+            initial={thankYouAsEmail}
+            onSave={async (input) => {
+              const res = await saveFormThankYouAction(input);
+              if (res.ok) router.refresh();
+              return res;
+            }}
+            readOnly={!canEdit}
+            active={tab === "thankyou"}
+            heightClass="min-h-[520px] flex-1"
+            showNameField={false}
+            showSubjectField={false}
+            previewVariant="web"
+            discountCode={template.discountCode}
+            successMessage="Thank-you landing page saved."
+            saveLabel="Save thank-you page"
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import Image from "next/image";
 import type { EmailBlock } from "@/lib/email-blocks";
 import { renderEmailMarkdown } from "@/lib/email-markdown";
@@ -309,6 +310,40 @@ function renderBlock(
     default:
       return null;
   }
+}
+
+export type ThankYouBlockContext = {
+  vars: TemplateVars;
+  discountCode: string;
+  accent: string;
+};
+
+/**
+ * Single block, memoized for the editor canvas. The public page keeps calling
+ * `renderBlock` directly, so its markup is unaffected by this wrapper.
+ */
+export const ThankYouBlockView = React.memo(function ThankYouBlockView({
+  block,
+  ctx,
+}: {
+  block: EmailBlock;
+  ctx: ThankYouBlockContext;
+}) {
+  return <>{renderBlock(block, ctx)}</>;
+});
+
+/** Dark backdrop plus the white landing card. Shared with the editor canvas. */
+export function ThankYouFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative overflow-hidden rounded-[14px] bg-[#2a1a14] p-4">
+      <div className="pointer-events-none absolute inset-0 bg-black/20" />
+      <div className="relative">
+        <div className="w-full rounded-[20px] border border-border bg-surface p-8 text-center shadow-[0_16px_48px_rgba(0,0,0,0.35)]">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function FormThankYouView({

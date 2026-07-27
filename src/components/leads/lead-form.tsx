@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
 import { CityCombobox } from "@/components/leads/city-combobox";
@@ -13,32 +13,269 @@ import type { FormField, FormPageCopy } from "@/lib/form-templates";
 const fieldClass =
   "mt-1.5 w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-merlot focus:ring-2 focus:ring-merlot/20";
 
+/**
+ * One rendered form field. Shared by the public form and the builder preview so
+ * designers always see exactly what visitors get.
+ */
+export const LeadFormField = React.memo(function LeadFormField({
+  field,
+  value,
+  countryCode,
+  acceptTerms,
+  onValue,
+  onCountryCode,
+  onAcceptTerms,
+}: {
+  field: FormField;
+  value: string | boolean | undefined;
+  countryCode: string;
+  acceptTerms: boolean;
+  onValue: (key: string, value: string | boolean) => void;
+  onCountryCode: (value: string) => void;
+  onAcceptTerms: (value: boolean) => void;
+}) {
+  if (field.type === "terms") {
+    return (
+      <fieldset className="rounded-lg border border-border bg-surface-muted/60 p-4">
+        <legend className="px-1 text-sm font-semibold text-foreground">
+          {field.label}
+        </legend>
+        <label className="flex cursor-pointer gap-3 text-sm leading-relaxed text-foreground">
+          <input
+            type="checkbox"
+            checked={acceptTerms}
+            onChange={(e) => onAcceptTerms(e.target.checked)}
+            className="mt-1 size-4 shrink-0 rounded border-border accent-merlot"
+            required={field.required}
+          />
+          <span>{field.termsText}</span>
+        </label>
+      </fieldset>
+    );
+  }
+
+  if (field.type === "phone") {
+    return (
+      <div>
+        <label
+          htmlFor={field.id}
+          className="text-sm font-medium text-foreground"
+        >
+          {field.label}
+        </label>
+        <div className="mt-1.5 flex gap-2">
+          <label htmlFor={`${field.id}-cc`} className="sr-only">
+            Kode negara
+          </label>
+          <select
+            id={`${field.id}-cc`}
+            name="countryCode"
+            value={countryCode}
+            onChange={(e) => onCountryCode(e.target.value)}
+            className="w-[9.5rem] shrink-0 rounded-lg border border-border bg-surface px-2.5 py-2.5 text-sm text-foreground outline-none transition focus:border-merlot focus:ring-2 focus:ring-merlot/20 sm:w-44"
+          >
+            {COUNTRY_DIAL_CODES.map((c) => (
+              <option key={`${c.iso}-${c.dial}`} value={c.dial}>
+                {c.iso} +{c.dial}
+              </option>
+            ))}
+          </select>
+          <input
+            id={field.id}
+            name={field.key}
+            type="tel"
+            required={field.required}
+            autoComplete="tel-national"
+            inputMode="numeric"
+            value={String(value ?? "")}
+            onChange={(e) => onValue(field.key, e.target.value)}
+            className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-merlot focus:ring-2 focus:ring-merlot/20"
+            placeholder={
+              field.placeholder ||
+              (countryCode === "62" ? "812xxxxxxxx" : "Nomor tanpa kode negara")
+            }
+          />
+        </div>
+        {field.helpText ? (
+          <p className="mt-1 text-xs text-muted">{field.helpText}</p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (field.type === "city") {
+    return (
+      <div>
+        <label
+          htmlFor={field.id}
+          className="text-sm font-medium text-foreground"
+        >
+          {field.label}{" "}
+          {!field.required ? (
+            <span className="font-normal text-muted">(Opsional)</span>
+          ) : null}
+        </label>
+        <CityCombobox
+          id={field.id}
+          value={String(value ?? "")}
+          onChange={(v) => onValue(field.key, v)}
+        />
+        {field.helpText ? (
+          <p className="mt-1 text-xs text-muted">{field.helpText}</p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (field.type === "checkbox") {
+    return (
+      <label className="flex cursor-pointer gap-3 text-sm leading-relaxed text-foreground">
+        <input
+          type="checkbox"
+          checked={Boolean(value)}
+          onChange={(e) => onValue(field.key, e.target.checked)}
+          className="mt-1 size-4 shrink-0 rounded border-border accent-merlot"
+          required={field.required}
+        />
+        <span>{field.helpText || field.label}</span>
+      </label>
+    );
+  }
+
+  if (field.type === "select") {
+    return (
+      <div>
+        <label
+          htmlFor={field.id}
+          className="text-sm font-medium text-foreground"
+        >
+          {field.label}
+          {!field.required ? (
+            <span className="font-normal text-muted"> (Opsional)</span>
+          ) : null}
+        </label>
+        <select
+          id={field.id}
+          name={field.key}
+          required={field.required}
+          value={String(value ?? "")}
+          onChange={(e) => onValue(field.key, e.target.value)}
+          className={fieldClass}
+        >
+          <option value="">Pilih…</option>
+          {(field.options ?? []).map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        {field.helpText ? (
+          <p className="mt-1 text-xs text-muted">{field.helpText}</p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (field.type === "textarea") {
+    return (
+      <div>
+        <label
+          htmlFor={field.id}
+          className="text-sm font-medium text-foreground"
+        >
+          {field.label}
+          {!field.required ? (
+            <span className="font-normal text-muted"> (Opsional)</span>
+          ) : null}
+        </label>
+        <textarea
+          id={field.id}
+          name={field.key}
+          required={field.required}
+          value={String(value ?? "")}
+          onChange={(e) => onValue(field.key, e.target.value)}
+          className={`${fieldClass} min-h-[88px] resize-y`}
+          placeholder={field.placeholder}
+        />
+        {field.helpText ? (
+          <p className="mt-1 text-xs text-muted">{field.helpText}</p>
+        ) : null}
+      </div>
+    );
+  }
+
+  const inputType =
+    field.type === "date"
+      ? "date"
+      : field.type === "email"
+        ? "email"
+        : "text";
+
+  return (
+    <div>
+      <label htmlFor={field.id} className="text-sm font-medium text-foreground">
+        {field.label}
+        {!field.required ? (
+          <span className="font-normal text-muted"> (Opsional)</span>
+        ) : null}
+      </label>
+      <input
+        id={field.id}
+        name={field.key}
+        type={inputType}
+        required={field.required}
+        autoComplete={
+          field.key === "name"
+            ? "name"
+            : field.key === "email"
+              ? "email"
+              : undefined
+        }
+        value={String(value ?? "")}
+        onChange={(e) => onValue(field.key, e.target.value)}
+        className={fieldClass}
+        placeholder={field.placeholder}
+      />
+      {field.helpText ? (
+        <p className="mt-1 text-xs text-muted">{field.helpText}</p>
+      ) : null}
+    </div>
+  );
+});
+
 export function LeadForm({
   fields,
   submitLabel = "Kirim",
+  preview = false,
+  wrapField,
 }: {
   fields: FormField[];
   formPage?: FormPageCopy;
   submitLabel?: string;
+  /** Builder preview: nothing is submitted and native validation is skipped. */
+  preview?: boolean;
+  /** Lets the builder wrap each field with a selection affordance. */
+  wrapField?: (field: FormField, node: React.ReactNode) => React.ReactNode;
 }) {
   const router = useRouter();
-  const [values, setValues] = useState<Record<string, string | boolean>>({});
-  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_DIAL);
-  const [acceptTerms, setAcceptTerms] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [values, setValues] = React.useState<Record<string, string | boolean>>(
+    {},
+  );
+  const [countryCode, setCountryCode] = React.useState(DEFAULT_COUNTRY_DIAL);
+  const [acceptTerms, setAcceptTerms] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
 
-  const orderedFields = useMemo(() => fields, [fields]);
-
-  function setValue(key: string, value: string | boolean) {
+  const setValue = React.useCallback((key: string, value: string | boolean) => {
     setValues((prev) => ({ ...prev, [key]: value }));
-  }
+  }, []);
 
-  async function onSubmit(e: FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (preview) return;
     setError(null);
 
-    const termsField = orderedFields.find((f) => f.key === "terms");
+    const termsField = fields.find((f) => f.key === "terms");
     if (termsField && !acceptTerms) {
       setError("Anda harus menyetujui pernyataan Privasi Data.");
       return;
@@ -84,218 +321,24 @@ export function LeadForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      {orderedFields.map((field) => {
-        if (field.type === "terms") {
-          return (
-            <fieldset
-              key={field.id}
-              className="rounded-lg border border-border bg-surface-muted/60 p-4"
-            >
-              <legend className="px-1 text-sm font-semibold text-foreground">
-                {field.label}
-              </legend>
-              <label className="flex cursor-pointer gap-3 text-sm leading-relaxed text-foreground">
-                <input
-                  type="checkbox"
-                  checked={acceptTerms}
-                  onChange={(e) => setAcceptTerms(e.target.checked)}
-                  className="mt-1 size-4 shrink-0 rounded border-border accent-merlot"
-                  required={field.required}
-                />
-                <span>{field.termsText}</span>
-              </label>
-            </fieldset>
-          );
-        }
-
-        if (field.type === "phone") {
-          return (
-            <div key={field.id}>
-              <label
-                htmlFor={field.id}
-                className="text-sm font-medium text-foreground"
-              >
-                {field.label}
-              </label>
-              <div className="mt-1.5 flex gap-2">
-                <label htmlFor={`${field.id}-cc`} className="sr-only">
-                  Kode negara
-                </label>
-                <select
-                  id={`${field.id}-cc`}
-                  name="countryCode"
-                  value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
-                  className="w-[9.5rem] shrink-0 rounded-lg border border-border bg-surface px-2.5 py-2.5 text-sm text-foreground outline-none transition focus:border-merlot focus:ring-2 focus:ring-merlot/20 sm:w-44"
-                >
-                  {COUNTRY_DIAL_CODES.map((c) => (
-                    <option key={`${c.iso}-${c.dial}`} value={c.dial}>
-                      {c.iso} +{c.dial}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  id={field.id}
-                  name={field.key}
-                  type="tel"
-                  required={field.required}
-                  autoComplete="tel-national"
-                  inputMode="numeric"
-                  value={String(values[field.key] ?? "")}
-                  onChange={(e) => setValue(field.key, e.target.value)}
-                  className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-merlot focus:ring-2 focus:ring-merlot/20"
-                  placeholder={
-                    field.placeholder ||
-                    (countryCode === "62" ? "812xxxxxxxx" : "Nomor tanpa kode negara")
-                  }
-                />
-              </div>
-              {field.helpText ? (
-                <p className="mt-1 text-xs text-muted">{field.helpText}</p>
-              ) : null}
-            </div>
-          );
-        }
-
-        if (field.type === "city") {
-          return (
-            <div key={field.id}>
-              <label
-                htmlFor={field.id}
-                className="text-sm font-medium text-foreground"
-              >
-                {field.label}{" "}
-                {!field.required ? (
-                  <span className="font-normal text-muted">(Opsional)</span>
-                ) : null}
-              </label>
-              <CityCombobox
-                id={field.id}
-                value={String(values[field.key] ?? "")}
-                onChange={(v) => setValue(field.key, v)}
-              />
-            </div>
-          );
-        }
-
-        if (field.type === "checkbox") {
-          return (
-            <label
-              key={field.id}
-              className="flex cursor-pointer gap-3 text-sm leading-relaxed text-foreground"
-            >
-              <input
-                type="checkbox"
-                checked={Boolean(values[field.key])}
-                onChange={(e) => setValue(field.key, e.target.checked)}
-                className="mt-1 size-4 shrink-0 rounded border-border accent-merlot"
-                required={field.required}
-              />
-              <span>{field.helpText || field.label}</span>
-            </label>
-          );
-        }
-
-        if (field.type === "select") {
-          return (
-            <div key={field.id}>
-              <label
-                htmlFor={field.id}
-                className="text-sm font-medium text-foreground"
-              >
-                {field.label}
-                {!field.required ? (
-                  <span className="font-normal text-muted"> (Opsional)</span>
-                ) : null}
-              </label>
-              <select
-                id={field.id}
-                name={field.key}
-                required={field.required}
-                value={String(values[field.key] ?? "")}
-                onChange={(e) => setValue(field.key, e.target.value)}
-                className={fieldClass}
-              >
-                <option value="">Pilih…</option>
-                {(field.options ?? []).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          );
-        }
-
-        if (field.type === "textarea") {
-          return (
-            <div key={field.id}>
-              <label
-                htmlFor={field.id}
-                className="text-sm font-medium text-foreground"
-              >
-                {field.label}
-                {!field.required ? (
-                  <span className="font-normal text-muted"> (Opsional)</span>
-                ) : null}
-              </label>
-              <textarea
-                id={field.id}
-                name={field.key}
-                required={field.required}
-                value={String(values[field.key] ?? "")}
-                onChange={(e) => setValue(field.key, e.target.value)}
-                className={`${fieldClass} min-h-[88px] resize-y`}
-                placeholder={field.placeholder}
-              />
-            </div>
-          );
-        }
-
-        const inputType =
-          field.type === "date"
-            ? "date"
-            : field.type === "email"
-              ? "email"
-              : "text";
-
-        return (
-          <div key={field.id}>
-            <label
-              htmlFor={field.id}
-              className="text-sm font-medium text-foreground"
-            >
-              {field.label}
-              {!field.required ? (
-                <span className="font-normal text-muted"> (Opsional)</span>
-              ) : null}
-            </label>
-            <input
-              id={field.id}
-              name={field.key}
-              type={inputType}
-              required={field.required}
-              autoComplete={
-                field.key === "name"
-                  ? "name"
-                  : field.key === "email"
-                    ? "email"
-                    : undefined
-              }
-              value={String(values[field.key] ?? "")}
-              onChange={(e) => setValue(field.key, e.target.value)}
-              className={fieldClass}
-              placeholder={field.placeholder}
-            />
-            {field.helpText ? (
-              <p className="mt-1 text-xs text-muted">{field.helpText}</p>
-            ) : null}
-          </div>
+    <form onSubmit={onSubmit} noValidate={preview} className="space-y-4">
+      {fields.map((field) => {
+        const node = (
+          <LeadFormField
+            key={field.id}
+            field={field}
+            value={values[field.key]}
+            countryCode={countryCode}
+            acceptTerms={acceptTerms}
+            onValue={setValue}
+            onCountryCode={setCountryCode}
+            onAcceptTerms={setAcceptTerms}
+          />
         );
+        return wrapField ? wrapField(field, node) : node;
       })}
 
-      {error && (
+      {error && !preview && (
         <p
           className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger"
           role="alert"

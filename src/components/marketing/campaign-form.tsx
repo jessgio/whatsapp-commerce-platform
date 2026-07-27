@@ -402,6 +402,7 @@ export function CampaignForm({
             key={editorKey}
             initial={emailDraft}
             customFonts={customFonts}
+            heightClass="h-[70vh] min-h-[560px]"
             showNameField={false}
             successMessage="Campaign email design saved."
             saveLabel="Save email design"

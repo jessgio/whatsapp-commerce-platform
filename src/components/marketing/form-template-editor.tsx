@@ -1,547 +1,408 @@
 "use client";
 
+import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { arrayMove } from "@dnd-kit/sortable";
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Plus, Trash2 } from "lucide-react";
-import { BrandMark } from "@/components/brand-mark";
-import { Button } from "@/components/ui";
+  AlignLeft,
+  Calendar,
+  CheckSquare,
+  ChevronDownSquare,
+  Mail,
+  MapPin,
+  Phone,
+  ShieldCheck,
+  Settings2,
+  Type,
+} from "lucide-react";
 import { saveFormFieldsAction } from "@/app/(portal)/marketing/design/form/actions";
 import {
+  AddPalette,
+  EditorShell,
+  type EditorDevice,
+  type EditorMessage,
+} from "@/components/editor/editor-shell";
+import { EditorRail, type EditorRailItem } from "@/components/editor/editor-rail";
+import { useEditorHistory } from "@/components/editor/use-editor-history";
+import {
+  useEditorShortcuts,
+  useUnsavedChangesGuard,
+} from "@/components/editor/use-editor-shortcuts";
+import { FormCanvas } from "@/components/marketing/form-canvas";
+import {
+  FormInspector,
+  isFieldLocked,
+  type FormDoc,
+} from "@/components/marketing/form-inspector";
+import {
   OPTIONAL_SYSTEM_KEYS,
-  REQUIRED_SYSTEM_KEYS,
   createCustomField,
   createSystemField,
   isSystemFieldKey,
+  newFormFieldId,
   type FormField,
+  type FormFieldType,
   type FormPageCopy,
   type FormTemplate,
   type SystemFormFieldKey,
 } from "@/lib/form-templates";
 import { cn } from "@/lib/utils";
 
-const fieldClass =
-  "mt-1.5 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none transition focus:border-merlot focus:ring-2 focus:ring-merlot/20";
+type CustomFieldType = "text" | "textarea" | "select" | "checkbox";
 
-function SortableFieldRow({
-  field,
-  selected,
-  locked,
-  onSelect,
-  onRemove,
-}: {
-  field: FormField;
-  selected: boolean;
-  locked: boolean;
-  onSelect: () => void;
-  onRemove: () => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: field.id });
+const CUSTOM_FIELD_OPTIONS: { id: CustomFieldType; label: string }[] = [
+  { id: "text", label: "Short text" },
+  { id: "textarea", label: "Long text" },
+  { id: "select", label: "Select" },
+  { id: "checkbox", label: "Checkbox" },
+];
 
-  return (
-    <div
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }}
-      className={cn(
-        "flex items-center gap-2 rounded-lg border px-2 py-2",
-        selected
-          ? "border-merlot/50 bg-merlot/5"
-          : "border-border bg-surface-muted/40",
-        isDragging && "opacity-70 shadow-md",
-      )}
-    >
-      <button
-        type="button"
-        className="cursor-grab text-muted touch-none"
-        {...attributes}
-        {...listeners}
-        aria-label="Drag to reorder"
-      >
-        <GripVertical size={16} />
-      </button>
-      <button
-        type="button"
-        onClick={onSelect}
-        className="min-w-0 flex-1 text-left"
-      >
-        <p className="truncate text-sm font-medium text-foreground">
-          {field.label}
-        </p>
-        <p className="truncate text-xs text-muted">
-          {field.key} · {field.type}
-          {field.required ? " · required" : ""}
-        </p>
-      </button>
-      {!locked ? (
-        <button
-          type="button"
-          onClick={onRemove}
-          className="rounded p-1.5 text-muted hover:bg-danger/10 hover:text-danger"
-          aria-label="Remove field"
-        >
-          <Trash2 size={14} />
-        </button>
-      ) : null}
-    </div>
-  );
-}
+const FIELD_ICONS: Record<FormFieldType, React.ReactNode> = {
+  text: <Type size={14} />,
+  date: <Calendar size={14} />,
+  phone: <Phone size={14} />,
+  email: <Mail size={14} />,
+  city: <MapPin size={14} />,
+  terms: <ShieldCheck size={14} />,
+  textarea: <AlignLeft size={14} />,
+  select: <ChevronDownSquare size={14} />,
+  checkbox: <CheckSquare size={14} />,
+};
 
-function FormLivePreview({
-  formPage,
-  fields,
-}: {
-  formPage: FormPageCopy;
-  fields: FormField[];
-}) {
-  return (
-    <div className="rounded-[20px] border border-border bg-surface p-6 shadow-[0_12px_40px_rgba(45,43,42,0.10)]">
-      <div className="mb-5 flex items-center gap-2.5">
-        <BrandMark size={40} />
-        <div>
-          <p className="text-lg font-semibold tracking-tight text-foreground">
-            {formPage.brandTitle}
-          </p>
-          <p className="text-xs text-muted">{formPage.eyebrow}</p>
-        </div>
-      </div>
-      <h1 className="text-xl font-semibold text-foreground">
-        {formPage.headline}
-      </h1>
-      <p className="mt-1 text-sm text-muted">{formPage.intro}</p>
-      <div className="mt-5 space-y-3">
-        {fields.map((f) => (
-          <div key={f.id}>
-            {f.type === "terms" ? (
-              <fieldset className="rounded-lg border border-border bg-surface-muted/60 p-3">
-                <legend className="px-1 text-xs font-semibold">
-                  {f.label}
-                </legend>
-                <p className="text-xs leading-relaxed text-muted">
-                  {f.termsText || "Terms text…"}
-                </p>
-              </fieldset>
-            ) : (
-              <>
-                <label className="text-xs font-medium text-foreground">
-                  {f.label}
-                  {!f.required ? (
-                    <span className="font-normal text-muted"> (Opsional)</span>
-                  ) : null}
-                </label>
-                <div className="mt-1 h-9 rounded-lg border border-dashed border-border bg-surface-muted/30" />
-              </>
-            )}
-          </div>
-        ))}
-        <div className="rounded-lg bg-merlot px-3 py-2.5 text-center text-sm font-medium text-white">
-          {formPage.submitLabel}
-        </div>
-      </div>
-    </div>
-  );
-}
+const SYSTEM_KEY_LABELS: Record<SystemFormFieldKey, string> = {
+  name: "Name",
+  birthDate: "Birth date",
+  phone: "Phone",
+  email: "Email",
+  city: "City",
+  terms: "Terms",
+};
 
 export function FormTemplateEditor({
   initial,
   canEdit = true,
+  heightClass,
+  active = true,
 }: {
   initial: FormTemplate;
   canEdit?: boolean;
+  heightClass?: string;
+  /** Set false when the editor is mounted but hidden, so shortcuts stay off. */
+  active?: boolean;
 }) {
   const router = useRouter();
-  const [name, setName] = useState(initial.name);
-  const [discountCode, setDiscountCode] = useState(initial.discountCode);
-  const [formPage, setFormPage] = useState<FormPageCopy>(initial.formPage);
-  const [fields, setFields] = useState<FormField[]>(initial.fields);
-  const [selectedId, setSelectedId] = useState<string | null>(
-    initial.fields[0]?.id ?? null,
-  );
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(
-    null,
+  const readOnly = !canEdit;
+
+  const history = useEditorHistory<FormDoc>({
+    name: initial.name,
+    discountCode: initial.discountCode,
+    formPage: initial.formPage,
+    fields: initial.fields,
+  });
+  const { doc, commit, markSaved } = history;
+
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [device, setDevice] = React.useState<EditorDevice>("mobile");
+  const [saving, setSaving] = React.useState(false);
+  const [message, setMessage] = React.useState<EditorMessage>(null);
+
+  useUnsavedChangesGuard(history.isDirty && !readOnly);
+
+  // Keystrokes stay responsive; the canvas repaints in a lower-priority pass.
+  const canvasDoc = React.useDeferredValue(doc);
+
+  const selectedField = React.useMemo(
+    () => doc.fields.find((f) => f.id === selectedId) ?? null,
+    [doc.fields, selectedId],
   );
 
-  const selected = fields.find((f) => f.id === selectedId) ?? null;
-  const presentSystemKeys = useMemo(
+  const presentSystemKeys = React.useMemo(
     () =>
       new Set(
-        fields.filter((f) => isSystemFieldKey(f.key)).map((f) => f.key),
+        doc.fields.filter((f) => isSystemFieldKey(f.key)).map((f) => f.key),
       ),
-    [fields],
-  );
-  const missingOptional = OPTIONAL_SYSTEM_KEYS.filter(
-    (k) => !presentSystemKeys.has(k),
+    [doc.fields],
   );
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
+  const missingOptional = React.useMemo(
+    () => OPTIONAL_SYSTEM_KEYS.filter((k) => !presentSystemKeys.has(k)),
+    [presentSystemKeys],
   );
 
-  function updateField(id: string, patch: Partial<FormField>) {
-    setFields((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, ...patch } : f)),
-    );
-  }
+  /* ---------- Document mutations ---------- */
 
-  function onDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setFields((prev) => {
-      const oldIndex = prev.findIndex((f) => f.id === active.id);
-      const newIndex = prev.findIndex((f) => f.id === over.id);
-      if (oldIndex < 0 || newIndex < 0) return prev;
-      return arrayMove(prev, oldIndex, newIndex);
-    });
-  }
+  const changeDoc = React.useCallback(
+    (patch: Partial<Omit<FormDoc, "formPage" | "fields">>) => {
+      commit(
+        (prev) => ({ ...prev, ...patch }),
+        `doc:${Object.keys(patch).join(",")}`,
+      );
+    },
+    [commit],
+  );
 
-  function addCustom(type: "text" | "textarea" | "select" | "checkbox") {
-    const field = createCustomField(type);
-    setFields((prev) => [...prev, field]);
-    setSelectedId(field.id);
-  }
+  const changeCopy = React.useCallback(
+    (patch: Partial<FormPageCopy>) => {
+      commit(
+        (prev) => ({ ...prev, formPage: { ...prev.formPage, ...patch } }),
+        `copy:${Object.keys(patch).join(",")}`,
+      );
+    },
+    [commit],
+  );
 
-  function restoreSystem(key: SystemFormFieldKey) {
-    if (presentSystemKeys.has(key)) return;
-    const field = createSystemField(key);
-    setFields((prev) => [...prev, field]);
-    setSelectedId(field.id);
-  }
+  const changeField = React.useCallback(
+    (id: string, patch: Partial<FormField>) => {
+      commit(
+        (prev) => ({
+          ...prev,
+          fields: prev.fields.map((f) => (f.id === id ? { ...f, ...patch } : f)),
+        }),
+        `field:${id}`,
+      );
+    },
+    [commit],
+  );
 
-  function removeField(id: string) {
-    const field = fields.find((f) => f.id === id);
-    if (!field) return;
-    if (
-      isSystemFieldKey(field.key) &&
-      REQUIRED_SYSTEM_KEYS.includes(field.key)
-    ) {
-      return;
-    }
-    setFields((prev) => prev.filter((f) => f.id !== id));
-    if (selectedId === id) setSelectedId(null);
-  }
+  const addCustom = React.useCallback(
+    (type: CustomFieldType) => {
+      const field = createCustomField(type);
+      commit((prev) => {
+        const at = prev.fields.findIndex((f) => f.id === selectedId);
+        const fields = [...prev.fields];
+        fields.splice(at < 0 ? fields.length : at + 1, 0, field);
+        return { ...prev, fields };
+      });
+      setSelectedId(field.id);
+    },
+    [commit, selectedId],
+  );
 
-  async function handleSave() {
+  const restoreSystem = React.useCallback(
+    (key: SystemFormFieldKey) => {
+      const field = createSystemField(key);
+      commit((prev) => {
+        if (prev.fields.some((f) => f.key === key)) return prev;
+        return { ...prev, fields: [...prev.fields, field] };
+      });
+      setSelectedId(field.id);
+    },
+    [commit],
+  );
+
+  /** System keys are unique, so only custom fields can be duplicated. */
+  const duplicateField = React.useCallback(
+    (id: string) => {
+      const newId = newFormFieldId();
+      commit((prev) => {
+        const at = prev.fields.findIndex((f) => f.id === id);
+        if (at < 0) return prev;
+        const source = prev.fields[at]!;
+        if (isSystemFieldKey(source.key)) return prev;
+        const fields = [...prev.fields];
+        fields.splice(at + 1, 0, {
+          ...source,
+          id: newId,
+          key: `custom_${newId}`,
+          options: source.options ? [...source.options] : undefined,
+        });
+        return { ...prev, fields };
+      });
+      setSelectedId(newId);
+    },
+    [commit],
+  );
+
+  const removeField = React.useCallback(
+    (id: string) => {
+      const target = doc.fields.find((f) => f.id === id);
+      if (!target || isFieldLocked(target)) return;
+      commit((prev) => ({
+        ...prev,
+        fields: prev.fields.filter((f) => f.id !== id),
+      }));
+      setSelectedId((current) => {
+        if (current !== id) return current;
+        const at = doc.fields.findIndex((f) => f.id === id);
+        const neighbour = doc.fields[at + 1] ?? doc.fields[at - 1];
+        return neighbour?.id ?? null;
+      });
+    },
+    [commit, doc.fields],
+  );
+
+  const reorder = React.useCallback(
+    (from: number, to: number) => {
+      commit((prev) => ({ ...prev, fields: arrayMove(prev.fields, from, to) }));
+    },
+    [commit],
+  );
+
+  /* ---------- Save ---------- */
+
+  const handleSave = React.useCallback(async () => {
+    if (readOnly || saving) return;
     setSaving(true);
     setMessage(null);
     try {
       const res = await saveFormFieldsAction({
         id: initial.id,
-        name,
-        formPage,
-        fields,
-        discountCode,
+        name: doc.name,
+        formPage: doc.formPage,
+        fields: doc.fields,
+        discountCode: doc.discountCode,
         isPublished: initial.isPublished,
       });
       setMessage({
         ok: res.ok,
         text: res.ok
-          ? "Form template saved. Public /daftar will use this design."
+          ? "Form saved. The public /daftar page uses this design."
           : (res.error ?? "Save failed."),
       });
-      if (res.ok) router.refresh();
+      if (res.ok) {
+        markSaved();
+        router.refresh();
+      }
     } finally {
       setSaving(false);
     }
-  }
+  }, [
+    readOnly,
+    saving,
+    initial.id,
+    initial.isPublished,
+    doc,
+    markSaved,
+    router,
+  ]);
 
-  return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <div className="space-y-4">
-        <div className="rounded-[14px] border border-border bg-surface p-5">
-          <h2 className="text-sm font-semibold text-foreground">Form settings</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label className="text-sm font-medium">Template name</label>
-              <input
-                className={fieldClass}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Discount code</label>
-              <input
-                className={fieldClass}
-                value={discountCode}
-                onChange={(e) => setDiscountCode(e.target.value)}
-                placeholder="AERIS15"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Submit label</label>
-              <input
-                className={fieldClass}
-                value={formPage.submitLabel}
-                onChange={(e) =>
-                  setFormPage((p) => ({ ...p, submitLabel: e.target.value }))
-                }
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Brand title</label>
-              <input
-                className={fieldClass}
-                value={formPage.brandTitle}
-                onChange={(e) =>
-                  setFormPage((p) => ({ ...p, brandTitle: e.target.value }))
-                }
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Eyebrow</label>
-              <input
-                className={fieldClass}
-                value={formPage.eyebrow}
-                onChange={(e) =>
-                  setFormPage((p) => ({ ...p, eyebrow: e.target.value }))
-                }
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="text-sm font-medium">Headline</label>
-              <input
-                className={fieldClass}
-                value={formPage.headline}
-                onChange={(e) =>
-                  setFormPage((p) => ({ ...p, headline: e.target.value }))
-                }
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="text-sm font-medium">Intro</label>
-              <textarea
-                className={cn(fieldClass, "min-h-[80px] resize-y")}
-                value={formPage.intro}
-                onChange={(e) =>
-                  setFormPage((p) => ({ ...p, intro: e.target.value }))
-                }
-              />
-            </div>
-          </div>
-        </div>
+  useEditorShortcuts({
+    enabled: !readOnly && active,
+    onUndo: history.undo,
+    onRedo: history.redo,
+    onSave: () => void handleSave(),
+    onDuplicate: () => {
+      if (selectedId) duplicateField(selectedId);
+    },
+    onDelete: () => {
+      if (selectedId) removeField(selectedId);
+    },
+  });
 
-        <div className="rounded-[14px] border border-border bg-surface p-5">
-          <h2 className="text-sm font-semibold text-foreground">Fields</h2>
-          <p className="mt-1 text-xs text-muted">
-            Name, phone, email, and terms cannot be removed. Birth date and city
-            can be hidden. Add custom questions as needed.
-          </p>
+  /* ---------- Rail ---------- */
 
-          <div className="mt-4 space-y-2">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={onDragEnd}
-            >
-              <SortableContext
-                items={fields.map((f) => f.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {fields.map((field) => (
-                  <SortableFieldRow
-                    key={field.id}
-                    field={field}
-                    selected={selectedId === field.id}
-                    locked={
-                      isSystemFieldKey(field.key) &&
-                      REQUIRED_SYSTEM_KEYS.includes(field.key)
-                    }
-                    onSelect={() => setSelectedId(field.id)}
-                    onRemove={() => removeField(field.id)}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-          </div>
+  const railItems = React.useMemo<EditorRailItem[]>(
+    () =>
+      doc.fields.map((field) => ({
+        id: field.id,
+        label: field.label || field.key,
+        sublabel: `${field.type}${field.required ? " · required" : ""}`,
+        icon: FIELD_ICONS[field.type],
+        locked: isFieldLocked(field),
+        noDuplicate: isSystemFieldKey(field.key),
+      })),
+    [doc.fields],
+  );
 
-          <div className="mt-4">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
-              Add field
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {(
-                [
-                  ["text", "Short text"],
-                  ["textarea", "Long text"],
-                  ["select", "Select"],
-                  ["checkbox", "Checkbox"],
-                ] as const
-              ).map(([type, label]) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => addCustom(type)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface-muted/50 px-2.5 py-1.5 text-xs font-medium hover:border-merlot/40"
-                >
-                  <Plus size={12} />
-                  {label}
-                </button>
-              ))}
-              {missingOptional.map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => restoreSystem(key)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface-muted/50 px-2.5 py-1.5 text-xs font-medium hover:border-merlot/40"
-                >
-                  <Plus size={12} />
-                  Restore {key}
-                </button>
-              ))}
-            </div>
-          </div>
+  const rail = (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={() => setSelectedId(null)}
+        className={cn(
+          "flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left transition-colors",
+          selectedId === null
+            ? "border-merlot/50 bg-merlot/5"
+            : "border-transparent hover:border-border hover:bg-surface-muted/60",
+        )}
+      >
+        <Settings2
+          size={14}
+          className={selectedId === null ? "text-merlot" : "text-muted"}
+        />
+        <span className="truncate text-[13px] font-medium text-foreground">
+          Form settings
+        </span>
+      </button>
 
-          {selected ? (
-            <div className="mt-5 space-y-3 rounded-lg border border-border bg-surface-muted/30 p-4">
-              <h3 className="text-sm font-semibold">Field settings</h3>
-              <div>
-                <label className="text-sm font-medium">Label</label>
-                <input
-                  className={fieldClass}
-                  value={selected.label}
-                  onChange={(e) =>
-                    updateField(selected.id, { label: e.target.value })
-                  }
-                />
-              </div>
-              {selected.type !== "terms" && selected.type !== "checkbox" ? (
-                <div>
-                  <label className="text-sm font-medium">Placeholder</label>
-                  <input
-                    className={fieldClass}
-                    value={selected.placeholder ?? ""}
-                    onChange={(e) =>
-                      updateField(selected.id, { placeholder: e.target.value })
-                    }
-                  />
-                </div>
-              ) : null}
-              <div>
-                <label className="text-sm font-medium">Help text</label>
-                <input
-                  className={fieldClass}
-                  value={selected.helpText ?? ""}
-                  onChange={(e) =>
-                    updateField(selected.id, { helpText: e.target.value })
-                  }
-                />
-              </div>
-              {selected.type === "terms" ? (
-                <div>
-                  <label className="text-sm font-medium">Terms copy</label>
-                  <textarea
-                    className={cn(fieldClass, "min-h-[100px] resize-y")}
-                    value={selected.termsText ?? ""}
-                    onChange={(e) =>
-                      updateField(selected.id, { termsText: e.target.value })
-                    }
-                  />
-                </div>
-              ) : null}
-              {selected.type === "select" ? (
-                <div>
-                  <label className="text-sm font-medium">
-                    Options (label|value per line)
-                  </label>
-                  <textarea
-                    className={cn(fieldClass, "min-h-[80px] font-mono text-xs")}
-                    value={(selected.options ?? [])
-                      .map((o) => `${o.label}|${o.value}`)
-                      .join("\n")}
-                    onChange={(e) => {
-                      const options = e.target.value
-                        .split("\n")
-                        .map((line) => line.trim())
-                        .filter(Boolean)
-                        .map((line) => {
-                          const [label, value] = line.split("|");
-                          return {
-                            label: (label ?? "").trim(),
-                            value: (value ?? label ?? "").trim(),
-                          };
-                        })
-                        .filter((o) => o.label && o.value);
-                      updateField(selected.id, { options });
-                    }}
-                  />
-                </div>
-              ) : null}
-              {!(
-                isSystemFieldKey(selected.key) &&
-                REQUIRED_SYSTEM_KEYS.includes(selected.key)
-              ) ? (
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={selected.required}
-                    onChange={(e) =>
-                      updateField(selected.id, { required: e.target.checked })
-                    }
-                    className="size-4 accent-merlot"
-                  />
-                  Required
-                </label>
-              ) : (
-                <p className="text-xs text-muted">This system field is always required.</p>
-              )}
-            </div>
-          ) : null}
-
-          {message ? (
-            <p
-              className={cn(
-                "mt-4 rounded-lg px-3 py-2 text-sm",
-                message.ok
-                  ? "bg-success/10 text-success"
-                  : "bg-danger/10 text-danger",
-              )}
-            >
-              {message.text}
-            </p>
-          ) : null}
-
-          {canEdit ? (
-            <div className="mt-5 flex justify-end">
-              <Button type="button" disabled={saving} onClick={handleSave}>
-                {saving ? "Saving…" : "Save form"}
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="space-y-3 xl:sticky xl:top-4 xl:self-start">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">Live preview</h2>
-          <p className="text-xs text-muted">Phone-width form chrome — not submitted.</p>
-        </div>
-        <div className="mx-auto max-w-sm">
-          <FormLivePreview formPage={formPage} fields={fields} />
-        </div>
+      <div>
+        <p className="mb-1 px-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+          Fields
+        </p>
+        <EditorRail
+          items={railItems}
+          selectedId={selectedId}
+          disabled={readOnly}
+          onSelect={setSelectedId}
+          onReorder={reorder}
+          onDuplicate={duplicateField}
+          onRemove={removeField}
+        />
       </div>
     </div>
+  );
+
+  const railFooter = !readOnly ? (
+    <div className="space-y-2.5">
+      <AddPalette
+        title="Add field"
+        options={CUSTOM_FIELD_OPTIONS}
+        onAdd={addCustom}
+      />
+      {missingOptional.length > 0 ? (
+        <AddPalette
+          title="Restore"
+          options={missingOptional.map((key) => ({
+            id: key,
+            label: SYSTEM_KEY_LABELS[key],
+          }))}
+          onAdd={restoreSystem}
+        />
+      ) : null}
+    </div>
+  ) : null;
+
+  return (
+    <EditorShell
+      heightClass={heightClass}
+      railTitle="Content"
+      rail={rail}
+      railFooter={railFooter}
+      canvasBackdrop="bg-[#efe9df]"
+      canvas={
+        <FormCanvas
+          formPage={canvasDoc.formPage}
+          fields={canvasDoc.fields}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+        />
+      }
+      inspectorTitle={
+        selectedField ? selectedField.label || "Field" : "Form settings"
+      }
+      inspector={
+        <FormInspector
+          field={selectedField}
+          doc={doc}
+          readOnly={readOnly}
+          onChangeDoc={changeDoc}
+          onChangeCopy={changeCopy}
+          onChangeField={changeField}
+        />
+      }
+      device={device}
+      onDeviceChange={setDevice}
+      canUndo={history.canUndo}
+      canRedo={history.canRedo}
+      onUndo={history.undo}
+      onRedo={history.redo}
+      isDirty={history.isDirty}
+      saving={saving}
+      onSave={() => void handleSave()}
+      saveLabel="Save form"
+      readOnly={readOnly}
+      message={message}
+      onDismissMessage={() => setMessage(null)}
+    />
   );
 }

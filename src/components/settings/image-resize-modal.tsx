@@ -29,7 +29,16 @@ export function ImageResizeModal({ file, onCancel, onConfirm }: Props) {
   const [previewBytes, setPreviewBytes] = useState<number | null>(null);
   const [outSize, setOutSize] = useState<{ w: number; h: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [encoding, setEncoding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Re-encoding is a full canvas draw plus a blob encode, far too heavy to run
+   * on every slider tick. Sliders update `maxWidth`/`quality` for the labels,
+   * while encoding follows these settled values.
+   */
+  const [settled, setSettled] = useState({ maxWidth: 900, quality: 0.85 });
+  const settleNow = () => setSettled({ maxWidth, quality });
 
   const objectUrl = useMemo(() => URL.createObjectURL(file), [file]);
 
@@ -49,6 +58,12 @@ export function ImageResizeModal({ file, onCancel, onConfirm }: Props) {
     img.src = objectUrl;
   }, [objectUrl]);
 
+  // Fallback for keyboard input and any pointer release we miss.
+  useEffect(() => {
+    const id = window.setTimeout(() => setSettled({ maxWidth, quality }), 260);
+    return () => window.clearTimeout(id);
+  }, [maxWidth, quality]);
+
   useEffect(() => {
     if (!natural) return;
     let cancelled = false;
@@ -63,9 +78,10 @@ export function ImageResizeModal({ file, onCancel, onConfirm }: Props) {
           setOutSize(natural);
           return;
         }
+        setEncoding(true);
         const { file: resized, width, height } = await resizeImageFile(file, {
-          maxWidth,
-          quality,
+          maxWidth: settled.maxWidth,
+          quality: settled.quality,
           output: format,
         });
         if (cancelled) return;
@@ -80,6 +96,8 @@ export function ImageResizeModal({ file, onCancel, onConfirm }: Props) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "Resize failed.");
         }
+      } finally {
+        if (!cancelled) setEncoding(false);
       }
     }
 
@@ -87,7 +105,15 @@ export function ImageResizeModal({ file, onCancel, onConfirm }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [file, natural, maxWidth, quality, format, useOriginal, objectUrl]);
+  }, [
+    file,
+    natural,
+    settled.maxWidth,
+    settled.quality,
+    format,
+    useOriginal,
+    objectUrl,
+  ]);
 
   async function confirm() {
     setBusy(true);
@@ -154,6 +180,7 @@ export function ImageResizeModal({ file, onCancel, onConfirm }: Props) {
                 } else {
                   setUseOriginal(false);
                   setMaxWidth(p.width);
+                  setSettled((s) => ({ ...s, maxWidth: p.width }));
                 }
               }}
             >
@@ -176,6 +203,8 @@ export function ImageResizeModal({ file, onCancel, onConfirm }: Props) {
                   setUseOriginal(false);
                   setMaxWidth(Number(e.target.value));
                 }}
+                onPointerUp={settleNow}
+                onKeyUp={settleNow}
                 className="mt-2 w-full accent-merlot"
               />
             </label>
@@ -189,6 +218,8 @@ export function ImageResizeModal({ file, onCancel, onConfirm }: Props) {
                 step={0.05}
                 value={quality}
                 onChange={(e) => setQuality(Number(e.target.value))}
+                onPointerUp={settleNow}
+                onKeyUp={settleNow}
                 className="mt-2 w-full accent-merlot"
                 disabled={format === "image/png"}
               />
@@ -212,10 +243,10 @@ export function ImageResizeModal({ file, onCancel, onConfirm }: Props) {
         )}
 
         <p className="mt-3 text-xs text-muted">
-          Output:{" "}
-          {outSize ? `${outSize.w}×${outSize.h}` : "…"}
+          Output: {outSize ? `${outSize.w}×${outSize.h}` : "…"}
           {previewBytes != null ? ` · ~${formatBytes(previewBytes)}` : ""}
           {useOriginal ? " (original file)" : ""}
+          {encoding ? " · updating…" : ""}
         </p>
 
         {error && (

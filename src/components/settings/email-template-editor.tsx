@@ -1,57 +1,64 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import * as React from "react";
+import dynamic from "next/dynamic";
+import { arrayMove } from "@dnd-kit/sortable";
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import {
-  GripVertical,
-  ImagePlus,
-  Plus,
-  Trash2,
+  BadgePercent,
+  Heading as HeadingIcon,
+  Image as ImageIcon,
+  Minus,
+  MousePointerClick,
+  MoveVertical,
+  PanelBottom,
+  PanelTop,
+  Settings2,
+  Type,
 } from "lucide-react";
-import { LeadWelcomeEmail } from "@/emails/lead-welcome";
 import {
   createEmailAssetUploadSlotAction,
   saveLeadWelcomeEmailAction,
 } from "@/app/(portal)/marketing/design/email/actions";
-import { FormThankYouView } from "@/components/leads/form-thank-you-view";
-import { ImageResizeModal } from "@/components/settings/image-resize-modal";
 import {
-  ButtonStyleControls,
-  DividerStyleControls,
-  ImageStyleControls,
-  TextStyleControls,
-} from "@/components/settings/email-style-controls";
+  AddPalette,
+  EditorShell,
+  type EditorDevice,
+  type EditorMessage,
+} from "@/components/editor/editor-shell";
+import { EditorRail, type EditorRailItem } from "@/components/editor/editor-rail";
+import { useEditorHistory } from "@/components/editor/use-editor-history";
+import {
+  useEditorShortcuts,
+  useUnsavedChangesGuard,
+} from "@/components/editor/use-editor-shortcuts";
+import { EmailCanvas } from "@/components/settings/email-canvas";
+import {
+  EmailInspector,
+  type EmailDoc,
+} from "@/components/settings/email-inspector";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   BLOCK_LABELS,
   createBlock,
+  newBlockId,
   type EmailBlock,
   type EmailBlockType,
 } from "@/lib/email-blocks";
 import type { EmailCustomFont } from "@/lib/email-fonts";
 import type { EmailTemplate } from "@/lib/email-templates";
 import { LEAD_DISCOUNT_CODE } from "@/lib/lead-offer";
-import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
-const fieldClass =
-  "mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none transition focus:border-merlot focus:ring-2 focus:ring-merlot/20";
+const ImageResizeModal = dynamic(
+  () =>
+    import("@/components/settings/image-resize-modal").then(
+      (m) => m.ImageResizeModal,
+    ),
+  { ssr: false },
+);
+
+const PREVIEW_EDIT_URL =
+  "https://join.aerisbeaute.com/daftar/edit?token=preview";
 
 const ADDABLE: EmailBlockType[] = [
   "image",
@@ -65,355 +72,37 @@ const ADDABLE: EmailBlockType[] = [
   "footer",
 ];
 
-function SortableBlockCard({
-  block,
-  selected,
-  onSelect,
-  onChange,
-  onRemove,
-  onPickImage,
-  uploading,
-  accentColor,
-  customFonts,
-}: {
-  block: EmailBlock;
-  selected: boolean;
-  onSelect: () => void;
-  onChange: (next: EmailBlock) => void;
-  onRemove: () => void;
-  onPickImage: (file: File, field: "src" | "logoUrl") => void;
-  uploading: boolean;
-  accentColor: string;
-  customFonts: EmailCustomFont[];
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: block.id });
+const BLOCK_ICONS: Record<EmailBlockType, React.ReactNode> = {
+  header: <PanelTop size={14} />,
+  image: <ImageIcon size={14} />,
+  heading: <HeadingIcon size={14} />,
+  text: <Type size={14} />,
+  discount: <BadgePercent size={14} />,
+  button: <MousePointerClick size={14} />,
+  spacer: <MoveVertical size={14} />,
+  divider: <Minus size={14} />,
+  footer: <PanelBottom size={14} />,
+};
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "rounded-xl border bg-surface p-3 shadow-[0_1px_2px_rgba(45,43,42,0.04)]",
-        selected ? "border-merlot ring-2 ring-merlot/20" : "border-border",
-        isDragging && "opacity-80",
-      )}
-      onClick={onSelect}
-    >
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          className="cursor-grab touch-none rounded p-1 text-muted hover:bg-surface-muted hover:text-foreground active:cursor-grabbing"
-          aria-label="Drag to reorder"
-          {...attributes}
-          {...listeners}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <GripVertical size={16} />
-        </button>
-        <span className="flex-1 text-sm font-medium text-foreground">
-          {BLOCK_LABELS[block.type]}
-        </span>
-        <button
-          type="button"
-          className="rounded p-1 text-muted hover:bg-danger/10 hover:text-danger"
-          aria-label="Remove block"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
-        >
-          <Trash2 size={15} />
-        </button>
-      </div>
-
-      <div className="mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
-        {block.type === "header" && (
-          <>
-            <input
-              className={fieldClass}
-              value={block.brandName}
-              onChange={(e) => onChange({ ...block, brandName: e.target.value })}
-              placeholder="Brand name"
-            />
-
-            <div className="rounded-lg border border-border bg-surface-muted/40 p-3">
-              <p className="text-xs font-medium text-foreground">Brand logo</p>
-              {block.logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={block.logoUrl}
-                  alt="Brand logo"
-                  className="mt-2 max-h-16 object-contain"
-                />
-              ) : (
-                <p className="mt-1 text-[11px] text-muted">
-                  No logo yet — the letter mark is used instead (if enabled).
-                </p>
-              )}
-              <div className="mt-2 flex flex-wrap gap-2">
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-foreground hover:bg-surface-muted">
-                  <ImagePlus size={14} />
-                  {uploading ? "Uploading…" : "Upload logo"}
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp,image/gif"
-                    className="hidden"
-                    disabled={uploading}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) onPickImage(file, "logoUrl");
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
-                {block.logoUrl ? (
-                  <button
-                    type="button"
-                    className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted hover:bg-danger/10 hover:text-danger"
-                    onClick={() => onChange({ ...block, logoUrl: "" })}
-                  >
-                    Remove logo
-                  </button>
-                ) : null}
-              </div>
-              <input
-                className={fieldClass}
-                value={block.logoUrl ?? ""}
-                onChange={(e) => onChange({ ...block, logoUrl: e.target.value })}
-                placeholder="Or paste logo URL"
-              />
-            </div>
-
-            <label className="flex items-center gap-2 text-xs text-foreground">
-              <input
-                type="checkbox"
-                checked={block.showMark}
-                onChange={(e) =>
-                  onChange({ ...block, showMark: e.target.checked })
-                }
-                className="accent-merlot"
-                disabled={Boolean(block.logoUrl?.trim())}
-              />
-              Show “A” mark{" "}
-              {block.logoUrl?.trim() ? (
-                <span className="text-muted">(hidden while logo is set)</span>
-              ) : null}
-            </label>
-            <TextStyleControls
-              style={block.style}
-              onChange={(style) => onChange({ ...block, style })}
-              defaults={{
-                fontFamily: "sans",
-                fontSize: 18,
-                fontWeight: 600,
-                align: "center",
-                color: "#fbf6ee",
-              }}
-              customFonts={customFonts}
-              showLineHeight={false}
-              showLetterSpacing
-            />
-          </>
-        )}
-
-        {block.type === "image" && (
-          <>
-            {block.src ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={block.src}
-                alt={block.alt}
-                className="max-h-28 w-full rounded-lg object-cover"
-              />
-            ) : (
-              <div className="flex h-20 items-center justify-center rounded-lg border border-dashed border-border bg-surface-muted text-xs text-muted">
-                No image yet
-              </div>
-            )}
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-surface-muted">
-              <ImagePlus size={14} />
-              {uploading ? "Uploading…" : "Upload & resize"}
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
-                className="hidden"
-                disabled={uploading}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) onPickImage(file, "src");
-                  e.target.value = "";
-                }}
-              />
-            </label>
-            <input
-              className={fieldClass}
-              value={block.src}
-              onChange={(e) => onChange({ ...block, src: e.target.value })}
-              placeholder="Or paste image URL"
-            />
-            <input
-              className={fieldClass}
-              value={block.href ?? ""}
-              onChange={(e) => onChange({ ...block, href: e.target.value })}
-              placeholder="Click-through link (https://…)"
-            />
-            <input
-              className={fieldClass}
-              value={block.alt}
-              onChange={(e) => onChange({ ...block, alt: e.target.value })}
-              placeholder="Alt text"
-            />
-            <ImageStyleControls
-              style={block.style}
-              onChange={(style) => onChange({ ...block, style })}
-            />
-          </>
-        )}
-
-        {(block.type === "heading" ||
-          block.type === "text" ||
-          block.type === "footer") && (
-          <>
-            <textarea
-              className={fieldClass}
-              rows={block.type === "heading" ? 2 : 4}
-              value={block.text}
-              onChange={(e) => onChange({ ...block, text: e.target.value })}
-              placeholder={
-                block.type === "heading"
-                  ? "Hello, {name}"
-                  : "Visit [our shop](https://aerisbeaute.com) — use {name} for first name"
-              }
-            />
-            <p className="text-[11px] leading-relaxed text-muted">
-              Markdown:{" "}
-              <code className="rounded bg-surface-muted px-1">
-                [label](https://…)
-              </code>
-              ,{" "}
-              <code className="rounded bg-surface-muted px-1">
-                {"[Perbarui]({edit_url})"}
-              </code>
-              ,{" "}
-              <code className="rounded bg-surface-muted px-1">**bold**</code>,{" "}
-              <code className="rounded bg-surface-muted px-1">*italic*</code>
-            </p>
-            <TextStyleControls
-              style={block.style}
-              onChange={(style) => onChange({ ...block, style })}
-              defaults={
-                block.type === "heading"
-                  ? {
-                      fontFamily: "serif",
-                      fontSize: 24,
-                      fontWeight: 600,
-                      align: "left",
-                      color: "#2d2b2a",
-                    }
-                  : block.type === "footer"
-                    ? {
-                        fontFamily: "sans",
-                        fontSize: 12,
-                        fontWeight: 400,
-                        align: "center",
-                        color: "#8a7e72",
-                      }
-                    : {
-                        fontFamily: "sans",
-                        fontSize: 16,
-                        fontWeight: 400,
-                        align: "left",
-                        color: "#8a7e72",
-                      }
-              }
-              customFonts={customFonts}
-              showLetterSpacing={block.type === "heading"}
-            />
-          </>
-        )}
-
-        {block.type === "discount" && (
-          <>
-            <input
-              className={fieldClass}
-              value={block.label}
-              onChange={(e) => onChange({ ...block, label: e.target.value })}
-              placeholder="Discount label"
-            />
-            <TextStyleControls
-              style={block.style}
-              onChange={(style) => onChange({ ...block, style })}
-              defaults={{
-                fontFamily: "sans",
-                fontSize: 11,
-                fontWeight: 400,
-                align: "center",
-                color: "#8a7e72",
-              }}
-              customFonts={customFonts}
-              showLineHeight={false}
-              showLetterSpacing
-            />
-          </>
-        )}
-
-        {block.type === "button" && (
-          <>
-            <input
-              className={fieldClass}
-              value={block.label}
-              onChange={(e) => onChange({ ...block, label: e.target.value })}
-              placeholder="Button label"
-            />
-            <input
-              className={fieldClass}
-              value={block.href}
-              onChange={(e) => onChange({ ...block, href: e.target.value })}
-              placeholder="https://"
-            />
-            <ButtonStyleControls
-              style={block.style}
-              onChange={(style) => onChange({ ...block, style })}
-              accentFallback={accentColor}
-              customFonts={customFonts}
-            />
-          </>
-        )}
-
-        {block.type === "spacer" && (
-          <label className="block text-xs text-muted">
-            Height (px)
-            <input
-              type="number"
-              min={8}
-              max={160}
-              className={fieldClass}
-              value={block.height}
-              onChange={(e) =>
-                onChange({
-                  ...block,
-                  height: Number(e.target.value) || 24,
-                })
-              }
-            />
-          </label>
-        )}
-
-        {block.type === "divider" && (
-          <DividerStyleControls
-            style={block.style}
-            onChange={(style) => onChange({ ...block, style })}
-          />
-        )}
-      </div>
-    </div>
-  );
+function blockSummary(block: EmailBlock): string | undefined {
+  switch (block.type) {
+    case "header":
+      return block.brandName || undefined;
+    case "image":
+      return block.src ? block.alt || "Image" : "No image yet";
+    case "heading":
+    case "text":
+    case "footer":
+      return block.text.trim().slice(0, 48) || undefined;
+    case "discount":
+      return block.label || undefined;
+    case "button":
+      return block.label || undefined;
+    case "spacer":
+      return `${block.height}px tall`;
+    case "divider":
+      return `${block.style?.thickness ?? 1}px line`;
+  }
 }
 
 type EmailSaveInput = {
@@ -437,6 +126,9 @@ export function EmailTemplateEditor({
   saveLabel = "Save template",
   previewVariant = "email",
   discountCode = LEAD_DISCOUNT_CODE,
+  heightClass,
+  readOnly = false,
+  active = true,
 }: {
   initial: EmailTemplate;
   /** Pass a server action reference — do not wrap in an inline closure from a Server Component. */
@@ -449,163 +141,217 @@ export function EmailTemplateEditor({
   /** `web` uses the form thank-you landing preview instead of the email chrome. */
   previewVariant?: "email" | "web";
   discountCode?: string;
+  /** Overrides the shell height when embedded inside another page. */
+  heightClass?: string;
+  readOnly?: boolean;
+  /** Set false when the editor is mounted but hidden, so shortcuts stay off. */
+  active?: boolean;
 }) {
-  const [name, setName] = useState(initial.name);
-  const [subject, setSubject] = useState(initial.subject);
-  const [accentColor, setAccentColor] = useState(initial.accentColor);
-  const [blocks, setBlocks] = useState<EmailBlock[]>(initial.blocks);
-  const [selectedId, setSelectedId] = useState<string | null>(
-    initial.blocks[0]?.id ?? null,
-  );
-  const [previewName, setPreviewName] = useState("Adinda");
-  const [saving, setSaving] = useState(false);
-  const [uploadingId, setUploadingId] = useState<string | null>(null);
-  const [resizeTarget, setResizeTarget] = useState<{
+  const history = useEditorHistory<EmailDoc>({
+    name: initial.name,
+    subject: initial.subject,
+    accentColor: initial.accentColor,
+    blocks: initial.blocks,
+  });
+  const { doc, commit, markSaved } = history;
+
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [previewName, setPreviewName] = React.useState("Adinda");
+  const [device, setDevice] = React.useState<EditorDevice>("desktop");
+  const [saving, setSaving] = React.useState(false);
+  const [uploadingId, setUploadingId] = React.useState<string | null>(null);
+  const [resizeTarget, setResizeTarget] = React.useState<{
     blockId: string;
     file: File;
     field: "src" | "logoUrl";
   } | null>(null);
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(
-    null,
+  const [message, setMessage] = React.useState<EditorMessage>(null);
+
+  useUnsavedChangesGuard(history.isDirty && !readOnly);
+
+  // Keystrokes stay responsive; the canvas repaints in a lower-priority pass.
+  const canvasDoc = React.useDeferredValue(doc);
+
+  const selectedBlock = React.useMemo(
+    () => doc.blocks.find((b) => b.id === selectedId) ?? null,
+    [doc.blocks, selectedId],
   );
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
+  /* ---------- Document mutations ---------- */
+
+  const changeDoc = React.useCallback(
+    (patch: Partial<EmailDoc>) => {
+      const tag = `doc:${Object.keys(patch).join(",")}`;
+      commit((prev) => ({ ...prev, ...patch }), tag);
+    },
+    [commit],
   );
 
-  const previewTemplate = useMemo<EmailTemplate>(
-    () => ({
-      id: initial.id,
-      name,
-      description: initial.description,
-      kind: initial.kind,
-      subject,
-      accentColor,
-      blocks,
-      updatedAt: initial.updatedAt,
-    }),
-    [
-      initial.id,
-      initial.description,
-      initial.kind,
-      initial.updatedAt,
-      name,
-      subject,
-      accentColor,
-      blocks,
-    ],
-  );
-
-  function updateBlock(id: string, next: EmailBlock) {
-    setBlocks((prev) => prev.map((b) => (b.id === id ? next : b)));
-  }
-
-  function removeBlock(id: string) {
-    setBlocks((prev) => prev.filter((b) => b.id !== id));
-    if (selectedId === id) setSelectedId(null);
-  }
-
-  function addBlock(type: EmailBlockType) {
-    const block = createBlock(type);
-    setBlocks((prev) => [...prev, block]);
-    setSelectedId(block.id);
-  }
-
-  function onDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setBlocks((prev) => {
-      const oldIndex = prev.findIndex((b) => b.id === active.id);
-      const newIndex = prev.findIndex((b) => b.id === over.id);
-      if (oldIndex < 0 || newIndex < 0) return prev;
-      return arrayMove(prev, oldIndex, newIndex);
-    });
-  }
-
-  async function handleUpload(
-    blockId: string,
-    file: File,
-    field: "src" | "logoUrl",
-  ) {
-    setUploadingId(blockId);
-    setMessage(null);
-    try {
-      const slot = await createEmailAssetUploadSlotAction({
-        filename: file.name || "upload.jpg",
-        contentType: file.type,
-        size: file.size,
-      });
-      if (!slot.ok) {
-        setMessage({ ok: false, text: slot.error ?? "Upload failed." });
-        return;
-      }
-
-      let publicUrl = slot.publicUrl ?? "";
-
-      if (slot.demo) {
-        // No Supabase — keep a local preview URL (not emailed in production).
-        publicUrl = URL.createObjectURL(file);
-      } else {
-        if (!slot.path || !slot.token) {
-          setMessage({ ok: false, text: "Upload slot incomplete." });
-          return;
-        }
-        const supabase = createSupabaseBrowserClient();
-        const { error } = await supabase.storage
-          .from("email-assets")
-          .uploadToSignedUrl(slot.path, slot.token, file, {
-            contentType: file.type || undefined,
-            cacheControl: "3600",
-          });
-        if (error) {
-          setMessage({ ok: false, text: error.message || "Upload to storage failed." });
-          return;
-        }
-        if (!publicUrl) {
-          publicUrl = supabase.storage.from("email-assets").getPublicUrl(slot.path)
-            .data.publicUrl;
-        }
-      }
-
-      setBlocks((prev) =>
-        prev.map((b) => {
-          if (b.id !== blockId) return b;
-          if (field === "logoUrl" && b.type === "header") {
-            return { ...b, logoUrl: publicUrl };
-          }
-          if (field === "src" && b.type === "image") {
-            return { ...b, src: publicUrl };
-          }
-          return b;
+  const changeBlock = React.useCallback(
+    (next: EmailBlock) => {
+      commit(
+        (prev) => ({
+          ...prev,
+          blocks: prev.blocks.map((b) => (b.id === next.id ? next : b)),
         }),
+        `block:${next.id}`,
       );
-      setMessage({
-        ok: true,
-        text:
-          field === "logoUrl"
-            ? "Logo uploaded. Remember to save the template."
-            : "Image uploaded. Remember to save the template.",
-      });
-    } catch (e) {
-      setMessage({
-        ok: false,
-        text: e instanceof Error ? e.message : "Upload failed unexpectedly.",
-      });
-    } finally {
-      setUploadingId(null);
-    }
-  }
+    },
+    [commit],
+  );
 
-  async function handleSave() {
+  const addBlock = React.useCallback(
+    (type: EmailBlockType) => {
+      const block = createBlock(type);
+      commit((prev) => {
+        const at = prev.blocks.findIndex((b) => b.id === selectedId);
+        const blocks = [...prev.blocks];
+        blocks.splice(at < 0 ? blocks.length : at + 1, 0, block);
+        return { ...prev, blocks };
+      });
+      setSelectedId(block.id);
+    },
+    [commit, selectedId],
+  );
+
+  const duplicateBlock = React.useCallback(
+    (id: string) => {
+      const copyId = newBlockId();
+      commit((prev) => {
+        const at = prev.blocks.findIndex((b) => b.id === id);
+        if (at < 0) return prev;
+        const source = prev.blocks[at]!;
+        const blocks = [...prev.blocks];
+        blocks.splice(at + 1, 0, { ...source, id: copyId });
+        return { ...prev, blocks };
+      });
+      setSelectedId(copyId);
+    },
+    [commit],
+  );
+
+  const removeBlock = React.useCallback(
+    (id: string) => {
+      commit((prev) => {
+        const at = prev.blocks.findIndex((b) => b.id === id);
+        if (at < 0) return prev;
+        return { ...prev, blocks: prev.blocks.filter((b) => b.id !== id) };
+      });
+      setSelectedId((current) => {
+        if (current !== id) return current;
+        const at = doc.blocks.findIndex((b) => b.id === id);
+        const neighbour = doc.blocks[at + 1] ?? doc.blocks[at - 1];
+        return neighbour?.id ?? null;
+      });
+    },
+    [commit, doc.blocks],
+  );
+
+  const reorder = React.useCallback(
+    (from: number, to: number) => {
+      commit((prev) => ({ ...prev, blocks: arrayMove(prev.blocks, from, to) }));
+    },
+    [commit],
+  );
+
+  /* ---------- Image upload ---------- */
+
+  const pickImage = React.useCallback(
+    (blockId: string, file: File, field: "src" | "logoUrl") => {
+      setResizeTarget({ blockId, file, field });
+    },
+    [],
+  );
+
+  const handleUpload = React.useCallback(
+    async (blockId: string, file: File, field: "src" | "logoUrl") => {
+      setUploadingId(blockId);
+      setMessage(null);
+      try {
+        const slot = await createEmailAssetUploadSlotAction({
+          filename: file.name || "upload.jpg",
+          contentType: file.type,
+          size: file.size,
+        });
+        if (!slot.ok) {
+          setMessage({ ok: false, text: slot.error ?? "Upload failed." });
+          return;
+        }
+
+        let publicUrl = slot.publicUrl ?? "";
+
+        if (slot.demo) {
+          // No Supabase — keep a local preview URL (not emailed in production).
+          publicUrl = URL.createObjectURL(file);
+        } else {
+          if (!slot.path || !slot.token) {
+            setMessage({ ok: false, text: "Upload slot incomplete." });
+            return;
+          }
+          const supabase = createSupabaseBrowserClient();
+          const { error } = await supabase.storage
+            .from("email-assets")
+            .uploadToSignedUrl(slot.path, slot.token, file, {
+              contentType: file.type || undefined,
+              cacheControl: "3600",
+            });
+          if (error) {
+            setMessage({
+              ok: false,
+              text: error.message || "Upload to storage failed.",
+            });
+            return;
+          }
+          if (!publicUrl) {
+            publicUrl = supabase.storage
+              .from("email-assets")
+              .getPublicUrl(slot.path).data.publicUrl;
+          }
+        }
+
+        commit((prev) => ({
+          ...prev,
+          blocks: prev.blocks.map((b) => {
+            if (b.id !== blockId) return b;
+            if (field === "logoUrl" && b.type === "header") {
+              return { ...b, logoUrl: publicUrl };
+            }
+            if (field === "src" && b.type === "image") {
+              return { ...b, src: publicUrl };
+            }
+            return b;
+          }),
+        }));
+
+        setMessage({
+          ok: true,
+          text:
+            field === "logoUrl"
+              ? "Logo uploaded. Remember to save."
+              : "Image uploaded. Remember to save.",
+        });
+      } catch (e) {
+        setMessage({
+          ok: false,
+          text: e instanceof Error ? e.message : "Upload failed unexpectedly.",
+        });
+      } finally {
+        setUploadingId(null);
+      }
+    },
+    [commit],
+  );
+
+  /* ---------- Save ---------- */
+
+  const handleSave = React.useCallback(async () => {
+    if (readOnly || saving) return;
     setSaving(true);
     setMessage(null);
     try {
       const save =
         onSave ??
-        (async (input) =>
+        (async (input: EmailSaveInput) =>
           saveLeadWelcomeEmailAction({
             subject: input.subject,
             accentColor: input.accentColor,
@@ -614,218 +360,191 @@ export function EmailTemplateEditor({
           }));
       const res = await save({
         id: initial.id,
-        name,
-        subject,
-        accentColor,
-        blocks,
+        name: doc.name,
+        subject: doc.subject,
+        accentColor: doc.accentColor,
+        blocks: doc.blocks,
         description: initial.description,
       });
       setMessage({
         ok: res.ok,
         text: res.ok ? successMessage : (res.error ?? "Save failed."),
       });
+      if (res.ok) markSaved();
     } finally {
       setSaving(false);
     }
-  }
+  }, [
+    readOnly,
+    saving,
+    onSave,
+    initial.id,
+    initial.description,
+    doc,
+    successMessage,
+    markSaved,
+  ]);
 
-  return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <div className="space-y-4">
-        <div className="rounded-[14px] border border-border bg-surface p-5">
-          <h2 className="text-sm font-semibold text-foreground">
-            {previewVariant === "web" ? "Landing page settings" : "Email settings"}
-          </h2>
-          <p className="mt-1 text-xs text-muted">
-            Placeholders:{" "}
-            <code className="rounded bg-surface-muted px-1">{"{name}"}</code>
-            {previewVariant === "email" ? (
-              <>
-                ,{" "}
-                <code className="rounded bg-surface-muted px-1">
-                  {"{edit_url}"}
-                </code>
-              </>
-            ) : null}
-            . Per-block controls: font, size, weight, alignment, color, and
-            layout. Text also supports markdown links, bold, and italic.
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {showNameField ? (
-              <div className="sm:col-span-2">
-                <label className="text-sm font-medium text-foreground">
-                  Template name
-                </label>
-                <input
-                  className={fieldClass}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Reorder nurture"
-                />
-              </div>
-            ) : null}
-            {showSubjectField ? (
-              <div className="sm:col-span-2">
-                <label className="text-sm font-medium text-foreground">
-                  Subject line
-                </label>
-                <input
-                  className={fieldClass}
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                />
-              </div>
-            ) : null}
-            <div>
-              <label className="text-sm font-medium text-foreground">
-                Accent color
-              </label>
-              <div className="mt-1 flex gap-2">
-                <input
-                  type="color"
-                  value={accentColor}
-                  onChange={(e) => setAccentColor(e.target.value)}
-                  className="h-10 w-12 cursor-pointer rounded border border-border bg-surface p-1"
-                />
-                <input
-                  className={fieldClass + " mt-0"}
-                  value={accentColor}
-                  onChange={(e) => setAccentColor(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+  useEditorShortcuts({
+    enabled: !readOnly && active,
+    onUndo: history.undo,
+    onRedo: history.redo,
+    onSave: () => void handleSave(),
+    onDuplicate: () => {
+      if (selectedId) duplicateBlock(selectedId);
+    },
+    onDelete: () => {
+      if (selectedId) removeBlock(selectedId);
+    },
+  });
 
-        <div className="rounded-[14px] border border-border bg-surface p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-foreground">Blocks</h2>
-            <p className="text-xs text-muted">Drag the handle to reorder</p>
-          </div>
+  /* ---------- Rail ---------- */
 
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={onDragEnd}
-          >
-            <SortableContext
-              items={blocks.map((b) => b.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <div className="mt-4 space-y-3">
-                {blocks.map((block) => (
-                  <SortableBlockCard
-                    key={block.id}
-                    block={block}
-                    selected={selectedId === block.id}
-                    onSelect={() => setSelectedId(block.id)}
-                    onChange={(next) => updateBlock(block.id, next)}
-                    onRemove={() => removeBlock(block.id)}
-                    onPickImage={(file, field) =>
-                      setResizeTarget({ blockId: block.id, file, field })
-                    }
-                    uploading={uploadingId === block.id}
-                    accentColor={accentColor}
-                    customFonts={customFonts}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
+  const railItems = React.useMemo<EditorRailItem[]>(
+    () =>
+      doc.blocks.map((block) => ({
+        id: block.id,
+        label: BLOCK_LABELS[block.type],
+        sublabel: blockSummary(block),
+        icon: BLOCK_ICONS[block.type],
+      })),
+    [doc.blocks],
+  );
 
-          {resizeTarget && (
-            <ImageResizeModal
-              file={resizeTarget.file}
-              onCancel={() => setResizeTarget(null)}
-              onConfirm={(file) => {
-                const { blockId, field } = resizeTarget;
-                setResizeTarget(null);
-                void handleUpload(blockId, file, field);
-              }}
-            />
-          )}
+  const paletteOptions = React.useMemo(
+    () =>
+      ADDABLE.map((type) => ({
+        id: type,
+        label: BLOCK_LABELS[type],
+        icon: BLOCK_ICONS[type],
+      })),
+    [],
+  );
 
-          <div className="mt-4">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
-              Add block
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {ADDABLE.map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => addBlock(type)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface-muted/50 px-2.5 py-1.5 text-xs font-medium text-foreground hover:border-merlot/40 hover:bg-merlot/5"
-                >
-                  <Plus size={12} />
-                  {BLOCK_LABELS[type]}
-                </button>
-              ))}
-            </div>
-          </div>
+  const settingsLabel =
+    previewVariant === "web" ? "Landing page settings" : "Email settings";
 
-          {message && (
-            <p
-              className={cn(
-                "mt-4 rounded-lg px-3 py-2 text-sm",
-                message.ok
-                  ? "bg-success/10 text-success"
-                  : "bg-danger/10 text-danger",
-              )}
-            >
-              {message.text}
-            </p>
-          )}
-
-          <div className="mt-5 flex justify-end">
-            <Button type="button" disabled={saving} onClick={handleSave}>
-              {saving ? "Saving…" : saveLabel}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-3 xl:sticky xl:top-4 xl:self-start">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Live preview</h2>
-            <p className="text-xs text-muted">Updates as you edit — not sent.</p>
-          </div>
-          <div>
-            <label htmlFor="previewName" className="text-xs text-muted">
-              Preview name
-            </label>
-            <input
-              id="previewName"
-              value={previewName}
-              onChange={(e) => setPreviewName(e.target.value)}
-              className="mt-1 w-40 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm"
-            />
-          </div>
-        </div>
-        {previewVariant === "web" ? (
-          <FormThankYouView
-            thankYou={{
-              accentColor,
-              blocks,
-              pageBg: null,
-            }}
-            discountCode={discountCode}
-            name={previewName || "Customer"}
-            showPageChrome={false}
-          />
-        ) : (
-          <div className="overflow-hidden rounded-[14px] border border-border bg-cream">
-            <LeadWelcomeEmail
-              name={previewName || "Customer"}
-              discountCode={discountCode}
-              template={previewTemplate}
-              customFonts={customFonts}
-              editUrl="https://join.aerisbeaute.com/daftar/edit?token=preview"
-            />
-          </div>
+  const rail = (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={() => setSelectedId(null)}
+        className={cn(
+          "flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left transition-colors",
+          selectedId === null
+            ? "border-merlot/50 bg-merlot/5"
+            : "border-transparent hover:border-border hover:bg-surface-muted/60",
         )}
+      >
+        <Settings2
+          size={14}
+          className={selectedId === null ? "text-merlot" : "text-muted"}
+        />
+        <span className="truncate text-[13px] font-medium text-foreground">
+          {settingsLabel}
+        </span>
+      </button>
+
+      <div>
+        <p className="mb-1 px-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+          Blocks
+        </p>
+        <EditorRail
+          items={railItems}
+          selectedId={selectedId}
+          disabled={readOnly}
+          onSelect={setSelectedId}
+          onReorder={reorder}
+          onDuplicate={duplicateBlock}
+          onRemove={removeBlock}
+        />
       </div>
     </div>
+  );
+
+  return (
+    <>
+      <EditorShell
+        heightClass={heightClass}
+        railTitle="Content"
+        rail={rail}
+        railFooter={
+          !readOnly ? (
+            <AddPalette
+              title="Add block"
+              options={paletteOptions}
+              onAdd={addBlock}
+            />
+          ) : null
+        }
+        canvas={
+          <EmailCanvas
+            blocks={canvasDoc.blocks}
+            accentColor={canvasDoc.accentColor}
+            variant={previewVariant}
+            customFonts={customFonts}
+            previewName={previewName}
+            discountCode={discountCode}
+            editUrl={previewVariant === "email" ? PREVIEW_EDIT_URL : ""}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+          />
+        }
+        inspectorTitle={
+          selectedBlock ? BLOCK_LABELS[selectedBlock.type] : settingsLabel
+        }
+        inspector={
+          <EmailInspector
+            block={selectedBlock}
+            doc={doc}
+            variant={previewVariant}
+            accentColor={doc.accentColor}
+            customFonts={customFonts}
+            showNameField={showNameField}
+            showSubjectField={showSubjectField}
+            uploading={uploadingId === selectedBlock?.id}
+            readOnly={readOnly}
+            onChangeDoc={changeDoc}
+            onChangeBlock={changeBlock}
+            onPickImage={pickImage}
+          />
+        }
+        device={device}
+        onDeviceChange={setDevice}
+        canUndo={history.canUndo}
+        canRedo={history.canRedo}
+        onUndo={history.undo}
+        onRedo={history.redo}
+        isDirty={history.isDirty}
+        saving={saving}
+        onSave={() => void handleSave()}
+        saveLabel={saveLabel}
+        readOnly={readOnly}
+        message={message}
+        onDismissMessage={() => setMessage(null)}
+        toolbarExtra={
+          <label className="flex items-center gap-1.5 text-[11px] text-muted">
+            Preview name
+            <input
+              value={previewName}
+              onChange={(e) => setPreviewName(e.target.value)}
+              className="w-24 rounded-md border border-border bg-surface px-2 py-1 text-[12px] text-foreground outline-none focus:border-merlot focus:ring-2 focus:ring-merlot/20"
+            />
+          </label>
+        }
+      />
+
+      {resizeTarget ? (
+        <ImageResizeModal
+          file={resizeTarget.file}
+          onCancel={() => setResizeTarget(null)}
+          onConfirm={(file) => {
+            const { blockId, field } = resizeTarget;
+            setResizeTarget(null);
+            void handleUpload(blockId, file, field);
+          }}
+        />
+      ) : null}
+    </>
   );
 }
