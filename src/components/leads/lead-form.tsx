@@ -32,7 +32,7 @@ export function LeadForm() {
     setError(null);
 
     if (!acceptTerms) {
-      setError("Anda harus menyetujui pernyataan T&C.");
+      setError("Anda harus menyetujui pernyataan Privasi Data.");
       return;
     }
 
@@ -166,7 +166,9 @@ export function LeadForm() {
       </div>
 
       <fieldset className="rounded-lg border border-border bg-surface-muted/60 p-4">
-        <legend className="px-1 text-sm font-semibold text-foreground">T&C</legend>
+        <legend className="px-1 text-sm font-semibold text-foreground">
+          Privasi Data
+        </legend>
 
         <label className="flex cursor-pointer gap-3 text-sm leading-relaxed text-foreground">
           <input

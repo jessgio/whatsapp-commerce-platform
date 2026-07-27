@@ -11,7 +11,7 @@ import type { Customer } from "@/lib/types";
 
 const TERMS_VERSION = "qr_v1";
 const CONSENT_NOTE =
-  "QR form: accepted T&C (CRM & komunikasi + kerahasiaan data).";
+  "QR form: accepted Privasi Data (CRM & komunikasi + kerahasiaan data).";
 
 type LeadBody = {
   name?: string;
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
 
   if (!body.acceptTerms) {
     return NextResponse.json(
-      { ok: false, error: "Anda harus menyetujui pernyataan T&C." },
+      { ok: false, error: "Anda harus menyetujui pernyataan Privasi Data." },
       { status: 400 },
     );
   }
