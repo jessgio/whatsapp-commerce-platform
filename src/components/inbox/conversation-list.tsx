@@ -8,7 +8,14 @@ import { cn, initials } from "@/lib/utils";
 import { timeAgo, windowMinutesLeft } from "@/lib/format";
 import type { Conversation } from "@/lib/types";
 
-export function ConversationList({ conversations }: { conversations: Conversation[] }) {
+export function ConversationList({
+  conversations,
+  total,
+}: {
+  conversations: Conversation[];
+  /** Every conversation on record; the list holds the most recent page. */
+  total: number;
+}) {
   const pathname = usePathname();
   const [filter, setFilter] = useState<"all" | "open" | "mine" | "unassigned">("all");
   const conversationSelected = pathname.startsWith("/inbox/") && pathname !== "/inbox";
@@ -85,6 +92,12 @@ export function ConversationList({ conversations }: { conversations: Conversatio
             </Link>
           );
         })}
+        {total > conversations.length && (
+          <p className="px-3 py-4 text-center text-[11px] text-muted">
+            Showing the {conversations.length} most recent of {total}{" "}
+            conversations.
+          </p>
+        )}
       </div>
     </div>
   );

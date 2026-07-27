@@ -1,17 +1,22 @@
 import Link from "next/link";
 import { Truck, Package } from "lucide-react";
 import { requirePermission } from "@/lib/guard";
-import { listShipments } from "@/lib/data/repo";
+import { countShipments, listShipments } from "@/lib/data/repo";
 import { Card, CardBody, PageHeader, StatCard } from "@/components/ui";
 import { ShipmentBadge } from "@/components/status";
 import { formatIDR, formatDateTime, formatNumber } from "@/lib/format";
 
 export default async function ShipmentsPage() {
   await requirePermission("shipments.view");
-  const shipments = await listShipments();
-
-  const inTransit = shipments.filter((s) => s.status === "in_transit" || s.status === "picked_up").length;
-  const delivered = shipments.filter((s) => s.status === "delivered").length;
+  // Counts come from Postgres; the cards describe every shipment, not just the
+  // most recent page rendered below.
+  const [shipments, totals] = await Promise.all([
+    listShipments(),
+    countShipments(),
+  ]);
+  const deliveryRate = totals.total
+    ? Math.round((totals.delivered / totals.total) * 100)
+    : 0;
 
   return (
     <div>
@@ -21,11 +26,18 @@ export default async function ShipmentsPage() {
       />
 
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Total shipments" value={formatNumber(shipments.length)} icon={<Package size={16} />} />
-        <StatCard label="In transit" value={formatNumber(inTransit)} icon={<Truck size={16} />} />
-        <StatCard label="Delivered" value={formatNumber(delivered)} />
-        <StatCard label="Delivery rate" value={`${shipments.length ? Math.round((delivered / shipments.length) * 100) : 0}%`} />
+        <StatCard label="Total shipments" value={formatNumber(totals.total)} icon={<Package size={16} />} />
+        <StatCard label="In transit" value={formatNumber(totals.inTransit)} icon={<Truck size={16} />} />
+        <StatCard label="Delivered" value={formatNumber(totals.delivered)} />
+        <StatCard label="Delivery rate" value={`${deliveryRate}%`} />
       </div>
+
+      {totals.total > shipments.length && (
+        <p className="mb-3 text-xs text-muted">
+          Showing the {formatNumber(shipments.length)} most recent of{" "}
+          {formatNumber(totals.total)} shipments.
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {shipments.map((s) => (

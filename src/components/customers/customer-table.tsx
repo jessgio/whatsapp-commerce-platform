@@ -13,10 +13,16 @@ const MAX_ROWS = 100;
 
 export function CustomerTable({
   customers,
+  total,
   canSeePii,
   segments = [],
 }: {
   customers: Customer[];
+  /**
+   * Every customer in the database. `customers` is only the page that was
+   * loaded, so searching and segment filtering here cover that page alone.
+   */
+  total: number;
   canSeePii: boolean;
   segments?: SegmentDefinition[];
 }) {
@@ -90,6 +96,13 @@ export function CustomerTable({
         </Link>
         <span className="ml-auto text-xs text-muted">{filtered.length} customers</span>
       </div>
+
+      {total > customers.length && (
+        <p className="mb-3 text-xs text-muted">
+          Searching the {customers.length} most recent of {total} customers.
+          Save a segment to query the full list.
+        </p>
+      )}
 
       <Table>
         <thead>

@@ -1,17 +1,14 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/guard";
-import { listCases } from "@/lib/data/repo";
+import { countCases, listCases } from "@/lib/data/repo";
 import { Avatar, PageHeader, Table, Th, Td } from "@/components/ui";
 import { CaseStatusBadge, PriorityBadge } from "@/components/status";
 import { timeAgo } from "@/lib/format";
 
 export default async function CasesPage() {
   await requirePermission("cases.view");
-  const cases = await listCases();
-  const sorted = [...cases].sort((a, b) => {
-    const order = { urgent: 0, high: 1, medium: 2, low: 3 };
-    return order[a.priority] - order[b.priority];
-  });
+  // Already ordered urgent-first by the query.
+  const [cases, total] = await Promise.all([listCases(), countCases()]);
 
   return (
     <div>
@@ -19,6 +16,11 @@ export default async function CasesPage() {
         title="Cases"
         subtitle="Flagged issues and complaints with ownership and SLA"
       />
+      {total > cases.length && (
+        <p className="mb-3 text-xs text-muted">
+          Showing the {cases.length} highest-priority of {total} cases.
+        </p>
+      )}
       <Table>
         <thead>
           <tr>
@@ -32,7 +34,7 @@ export default async function CasesPage() {
           </tr>
         </thead>
         <tbody>
-          {sorted.map((c) => (
+          {cases.map((c) => (
             <tr key={c.id} className="hover:bg-surface-muted">
               <Td className="text-sm font-medium text-merlot">{c.code}</Td>
               <Td>

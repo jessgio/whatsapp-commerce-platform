@@ -19,7 +19,14 @@ interface PackableHint {
   units: number;
 }
 
-export function PackStation({ packable }: { packable: PackableHint[] }) {
+export function PackStation({
+  packable,
+  total,
+}: {
+  packable: PackableHint[];
+  /** Every labelled order waiting, which may exceed the listed page. */
+  total: number;
+}) {
   const [session, setSession] = useState<PackSession | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
@@ -107,8 +114,14 @@ export function PackStation({ packable }: { packable: PackableHint[] }) {
         {!session && (
           <div className="rounded-[14px] border border-border bg-surface p-4">
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
-              Ready to pack ({packable.length})
+              Ready to pack ({total})
             </p>
+            {total > packable.length && (
+              <p className="mb-2 text-xs text-muted">
+                Listing the {packable.length} most recent — scan any label to
+                pack an order that is not shown.
+              </p>
+            )}
             {packable.length === 0 ? (
               <p className="text-sm text-muted">No labelled orders waiting. Generate labels in the warehouse queue.</p>
             ) : (

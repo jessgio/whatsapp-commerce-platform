@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/guard";
-import { listNotices, listOrders, listProducts } from "@/lib/data/repo";
+import {
+  countFulfillmentQueue,
+  countOpenNotices,
+  listFulfillmentQueue,
+  listNotices,
+  listProducts,
+} from "@/lib/data/repo";
 import {
   Badge,
   Card,
@@ -20,18 +26,22 @@ import { GenerateLabelButton } from "@/components/warehouse/label-actions";
 import { formatNumber, timeAgo } from "@/lib/format";
 
 const NOTICE_TONE = { open: "danger", ack: "warning", resolved: "success" } as const;
+const QUEUE_ROWS = 12;
 
 export default async function WarehousePage() {
   await requirePermission("warehouse.view");
-  const [products, orders, notices] = await Promise.all([
-    listProducts(),
-    listOrders(),
-    listNotices(),
-  ]);
+  // Only the dozen queue rows this page renders are fetched; the headline
+  // numbers are counted in Postgres so they are not bounded by a page size.
+  const [products, fulfillment, queueTotal, notices, openNoticeCount] =
+    await Promise.all([
+      listProducts(),
+      listFulfillmentQueue(QUEUE_ROWS),
+      countFulfillmentQueue(),
+      listNotices(),
+      countOpenNotices(),
+    ]);
 
   const lowStock = products.filter((p) => p.stock <= p.reorderPoint);
-  const fulfillment = orders.filter((o) => ["paid", "allocated", "packed"].includes(o.status));
-  const openNotices = notices.filter((n) => n.status !== "resolved");
 
   return (
     <div>
@@ -49,9 +59,9 @@ export default async function WarehousePage() {
       />
 
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Awaiting fulfillment" value={formatNumber(fulfillment.length)} />
+        <StatCard label="Awaiting fulfillment" value={formatNumber(queueTotal)} />
         <StatCard label="SKUs to reorder" value={formatNumber(lowStock.length)} />
-        <StatCard label="Open notices" value={formatNumber(openNotices.length)} />
+        <StatCard label="Open notices" value={formatNumber(openNoticeCount)} />
         <StatCard label="Total SKUs" value={formatNumber(products.length)} />
       </div>
 
@@ -59,7 +69,11 @@ export default async function WarehousePage() {
         <Card>
           <CardHeader>
             <CardTitle>Fulfillment queue</CardTitle>
-            <span className="text-xs text-muted">Paid → pick → pack → ship</span>
+            <span className="text-xs text-muted">
+              {queueTotal > fulfillment.length
+                ? `Oldest ${fulfillment.length} of ${formatNumber(queueTotal)}`
+                : "Paid → pick → pack → ship"}
+            </span>
           </CardHeader>
           <CardBody className="pt-0">
             {fulfillment.length === 0 ? (
@@ -76,7 +90,7 @@ export default async function WarehousePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {fulfillment.slice(0, 12).map((o) => (
+                  {fulfillment.map((o) => (
                     <tr key={o.id} className="hover:bg-surface-muted">
                       <Td>
                         <Link href={`/orders/${o.id}`} className="text-sm font-medium text-merlot hover:underline">
@@ -144,7 +158,7 @@ export default async function WarehousePage() {
       <Card className="mt-4">
         <CardHeader>
           <CardTitle>Notices from sales & CS</CardTitle>
-          <span className="text-xs text-muted">{openNotices.length} open</span>
+          <span className="text-xs text-muted">{openNoticeCount} open</span>
         </CardHeader>
         <CardBody className="space-y-2 pt-0">
           {notices.length === 0 ? (

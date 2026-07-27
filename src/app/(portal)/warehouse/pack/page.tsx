@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { Download } from "lucide-react";
 import { requirePermission } from "@/lib/guard";
-import { listPackableOrders } from "@/lib/data/repo";
+import { countPackableOrders, listPackableOrders } from "@/lib/data/repo";
 import { PageHeader } from "@/components/ui";
 import { PackStation } from "@/components/warehouse/pack-station";
 
 export default async function PackStationPage() {
   await requirePermission("warehouse.view");
-  const orders = await listPackableOrders();
+  const [orders, total] = await Promise.all([
+    listPackableOrders(),
+    countPackableOrders(),
+  ]);
   const packable = orders.map((o) => ({
     code: o.code,
     label: o.labelNumber!,
@@ -29,7 +32,7 @@ export default async function PackStationPage() {
           </Link>
         }
       />
-      <PackStation packable={packable} />
+      <PackStation packable={packable} total={total} />
     </div>
   );
 }

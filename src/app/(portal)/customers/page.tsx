@@ -2,15 +2,16 @@ import Link from "next/link";
 import { Layers, UploadCloud } from "lucide-react";
 import { requirePermission } from "@/lib/guard";
 import { can } from "@/lib/rbac";
-import { listCustomers } from "@/lib/data/repo";
+import { countCustomers, listCustomers } from "@/lib/data/repo";
 import { listSegmentDefinitions } from "@/lib/data/segments";
 import { Button, PageHeader } from "@/components/ui";
 import { CustomerTable } from "@/components/customers/customer-table";
 
 export default async function CustomersPage() {
   const user = await requirePermission("customers.view");
-  const [customers, segments] = await Promise.all([
+  const [customers, total, segments] = await Promise.all([
     listCustomers(),
+    countCustomers(),
     listSegmentDefinitions(),
   ]);
   const canSeePii = can(user.role, "customers.pii");
@@ -38,6 +39,7 @@ export default async function CustomersPage() {
       />
       <CustomerTable
         customers={customers}
+        total={total}
         canSeePii={canSeePii}
         segments={segments}
       />

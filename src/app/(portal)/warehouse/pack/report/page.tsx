@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Download, FileText } from "lucide-react";
 import { requirePermission } from "@/lib/guard";
-import { listPackSessions } from "@/lib/data/repo";
+import { getPackReportSummary, listPackSessions } from "@/lib/data/repo";
 import { Badge, PageHeader, StatCard, Table, Th, Td } from "@/components/ui";
 import { formatDateTime, formatNumber } from "@/lib/format";
 
@@ -15,17 +15,12 @@ function durationLabel(start: string, end: string | null): string {
 
 export default async function PackReportPage() {
   await requirePermission("warehouse.view");
-  const sessions = await listPackSessions();
-  const completed = sessions.filter((s) => s.status === "completed");
-
-  const avgSecs =
-    completed.length > 0
-      ? completed.reduce(
-          (sum, s) => sum + (new Date(s.completedAt!).getTime() - new Date(s.startedAt).getTime()) / 1000,
-          0,
-        ) / completed.length
-      : 0;
-  const totalUnits = sessions.reduce((s, x) => s + x.scans.length, 0);
+  // Totals are aggregated in Postgres over the whole history; the table below
+  // is only the most recent page of sessions.
+  const [sessions, summary] = await Promise.all([
+    listPackSessions(),
+    getPackReportSummary(),
+  ]);
 
   return (
     <div>
@@ -51,11 +46,19 @@ export default async function PackReportPage() {
       />
 
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Pack sessions" value={formatNumber(sessions.length)} />
-        <StatCard label="Completed" value={formatNumber(completed.length)} />
-        <StatCard label="Avg pack time" value={`${Math.round(avgSecs)}s`} />
-        <StatCard label="Units scanned" value={formatNumber(totalUnits)} />
+        <StatCard label="Pack sessions" value={formatNumber(summary.sessions)} />
+        <StatCard label="Completed" value={formatNumber(summary.completed)} />
+        <StatCard label="Avg pack time" value={`${summary.avgPackSeconds}s`} />
+        <StatCard label="Units scanned" value={formatNumber(summary.unitsScanned)} />
       </div>
+
+      {summary.sessions > sessions.length && (
+        <p className="mb-3 text-xs text-muted">
+          Showing the {formatNumber(sessions.length)} most recent of{" "}
+          {formatNumber(summary.sessions)} sessions. Use the CSV exports for the
+          full history.
+        </p>
+      )}
 
       <Table>
         <thead>

@@ -19,7 +19,14 @@ const FILTERS: (OrderStatus | "all")[] = [
   "cancelled",
 ];
 
-export function OrdersTable({ orders }: { orders: Order[] }) {
+export function OrdersTable({
+  orders,
+  total,
+}: {
+  orders: Order[];
+  /** Every order in the database; `orders` is only the page that was loaded. */
+  total: number;
+}) {
   const [status, setStatus] = useState<OrderStatus | "all">("all");
   const filtered = useMemo(
     () => (status === "all" ? orders : orders.filter((o) => o.status === status)),
@@ -45,6 +52,12 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
           {filtered.length} orders
         </span>
       </div>
+
+      {total > orders.length && (
+        <p className="mb-3 text-xs text-muted">
+          Filtering the {orders.length} most recent of {total} orders.
+        </p>
+      )}
 
       {/* Mobile cards */}
       <div className="space-y-2 md:hidden">

@@ -66,6 +66,26 @@ function liveRow<T>(
   return data;
 }
 
+/**
+ * Unwraps an exact-count read.
+ *
+ * The list readers below are all capped. Counting the rows they return would
+ * report the cap rather than the truth, so anything user-visible asks Postgres
+ * for the real total with a HEAD request — no rows cross the wire.
+ */
+function liveTotal(
+  scope: string,
+  { count, error }: { count: number | null; error: PostgrestError | null },
+): number {
+  if (error) {
+    console.error(`[repo] ${scope} failed`, error);
+    return 0;
+  }
+  return count ?? 0;
+}
+
+const HEAD_COUNT = { count: "exact", head: true } as const;
+
 /* ---------- Customers ---------- */
 
 export async function listCustomers(): Promise<Customer[]> {
@@ -79,6 +99,13 @@ export async function listCustomers(): Promise<Customer[]> {
     return liveRows("listCustomers", res).map(mapCustomer);
   }
   return DEMO_CUSTOMERS;
+}
+
+export async function countCustomers(): Promise<number> {
+  if (!shouldUseSupabaseData()) return DEMO_CUSTOMERS.length;
+  const supabase = await createSupabaseServerClient();
+  const res = await supabase.from("customers").select("*", HEAD_COUNT);
+  return liveTotal("countCustomers", res);
 }
 
 export async function getCustomer(id: string): Promise<Customer | null> {
@@ -117,6 +144,13 @@ export async function listConversations(): Promise<Conversation[]> {
   return DEMO_CONVERSATIONS.slice().sort(
     (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime(),
   );
+}
+
+export async function countConversations(): Promise<number> {
+  if (!shouldUseSupabaseData()) return DEMO_CONVERSATIONS.length;
+  const supabase = await createSupabaseServerClient();
+  const res = await supabase.from("conversations").select("*", HEAD_COUNT);
+  return liveTotal("countConversations", res);
 }
 
 /**
@@ -212,6 +246,51 @@ export async function listOrders(): Promise<Order[]> {
   );
 }
 
+export async function countOrders(): Promise<number> {
+  if (!shouldUseSupabaseData()) return DEMO_ORDERS.length;
+  const supabase = await createSupabaseServerClient();
+  const res = await supabase.from("orders").select("*", HEAD_COUNT);
+  return liveTotal("countOrders", res);
+}
+
+/** Orders sitting in the warehouse queue — paid but not yet shipped. */
+const FULFILLMENT_STATUSES = ["paid", "allocated", "packed"];
+
+export async function countFulfillmentQueue(): Promise<number> {
+  if (!shouldUseSupabaseData()) {
+    return DEMO_ORDERS.filter((o) => FULFILLMENT_STATUSES.includes(o.status)).length;
+  }
+  const supabase = await createSupabaseServerClient();
+  const res = await supabase
+    .from("orders")
+    .select("*", HEAD_COUNT)
+    .in("status", FULFILLMENT_STATUSES);
+  return liveTotal("countFulfillmentQueue", res);
+}
+
+/**
+ * The head of the fulfillment queue. The warehouse landing page used to pull
+ * 500 orders with their line items and filter down to the dozen it renders.
+ */
+export async function listFulfillmentQueue(limit = 12): Promise<Order[]> {
+  if (!shouldUseSupabaseData()) {
+    return DEMO_ORDERS.filter((o) => FULFILLMENT_STATUSES.includes(o.status)).slice(
+      0,
+      limit,
+    );
+  }
+  const supabase = await createSupabaseServerClient();
+  const res = await supabase
+    .from("orders")
+    .select(
+      "*, customers!orders_customer_id_fkey(name), order_items(product_id, sku, name, qty, unit_price)",
+    )
+    .in("status", FULFILLMENT_STATUSES)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return liveRows("listFulfillmentQueue", res).map(mapOrder);
+}
+
 export async function getOrder(id: string): Promise<Order | null> {
   if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
@@ -253,11 +332,27 @@ export async function listCases(): Promise<SupportCase[]> {
       .select(
         "*, customers!cases_customer_id_fkey(name), users!cases_owner_id_fkey(name)",
       )
+      // Urgent first. Ordering by recency and then re-sorting in the page meant
+      // a month-old urgent case fell outside the window and vanished from the
+      // queue entirely. The enum is declared low..urgent, so descending is
+      // urgent..low.
+      .order("priority", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(200);
     return liveRows("listCases", res).map(mapCase);
   }
-  return DEMO_CASES;
+  return [...DEMO_CASES].sort(
+    (a, b) => CASE_PRIORITY_ORDER[a.priority] - CASE_PRIORITY_ORDER[b.priority],
+  );
+}
+
+const CASE_PRIORITY_ORDER = { urgent: 0, high: 1, medium: 2, low: 3 } as const;
+
+export async function countCases(): Promise<number> {
+  if (!shouldUseSupabaseData()) return DEMO_CASES.length;
+  const supabase = await createSupabaseServerClient();
+  const res = await supabase.from("cases").select("*", HEAD_COUNT);
+  return liveTotal("countCases", res);
 }
 
 /* ---------- Shipments ---------- */
@@ -277,6 +372,35 @@ export async function listShipments(): Promise<Shipment[]> {
   return DEMO_SHIPMENTS;
 }
 
+export type ShipmentTotals = {
+  total: number;
+  inTransit: number;
+  delivered: number;
+};
+
+const IN_TRANSIT = ["in_transit", "picked_up"];
+
+export async function countShipments(): Promise<ShipmentTotals> {
+  if (!shouldUseSupabaseData()) {
+    return {
+      total: DEMO_SHIPMENTS.length,
+      inTransit: DEMO_SHIPMENTS.filter((s) => IN_TRANSIT.includes(s.status)).length,
+      delivered: DEMO_SHIPMENTS.filter((s) => s.status === "delivered").length,
+    };
+  }
+  const supabase = await createSupabaseServerClient();
+  const [total, inTransit, delivered] = await Promise.all([
+    supabase.from("shipments").select("*", HEAD_COUNT),
+    supabase.from("shipments").select("*", HEAD_COUNT).in("status", IN_TRANSIT),
+    supabase.from("shipments").select("*", HEAD_COUNT).eq("status", "delivered"),
+  ]);
+  return {
+    total: liveTotal("countShipments.total", total),
+    inTransit: liveTotal("countShipments.inTransit", inTransit),
+    delivered: liveTotal("countShipments.delivered", delivered),
+  };
+}
+
 /* ---------- Warehouse ---------- */
 
 export async function listNotices(): Promise<WarehouseNotice[]> {
@@ -292,6 +416,18 @@ export async function listNotices(): Promise<WarehouseNotice[]> {
     return liveRows("listNotices", res).map(mapNotice);
   }
   return DEMO_NOTICES;
+}
+
+export async function countOpenNotices(): Promise<number> {
+  if (!shouldUseSupabaseData()) {
+    return DEMO_NOTICES.filter((n) => n.status !== "resolved").length;
+  }
+  const supabase = await createSupabaseServerClient();
+  const res = await supabase
+    .from("warehouse_notices")
+    .select("*", HEAD_COUNT)
+    .neq("status", "resolved");
+  return liveTotal("countOpenNotices", res);
 }
 
 /* ---------- Pick & Pack ---------- */
@@ -314,6 +450,60 @@ export async function listPackableOrders(): Promise<Order[]> {
   return DEMO_ORDERS.filter(
     (o) => ["paid", "allocated"].includes(o.status) && o.labelNumber,
   );
+}
+
+export type PackReportSummary = {
+  sessions: number;
+  completed: number;
+  avgPackSeconds: number;
+  unitsScanned: number;
+};
+
+export async function getPackReportSummary(): Promise<PackReportSummary> {
+  if (!shouldUseSupabaseData()) {
+    const completed = DEMO_PACK_SESSIONS.filter((s) => s.status === "completed");
+    const totalSecs = completed.reduce(
+      (sum, s) =>
+        sum +
+        (new Date(s.completedAt!).getTime() - new Date(s.startedAt).getTime()) / 1000,
+      0,
+    );
+    return {
+      sessions: DEMO_PACK_SESSIONS.length,
+      completed: completed.length,
+      avgPackSeconds: completed.length ? Math.round(totalSecs / completed.length) : 0,
+      unitsScanned: DEMO_PACK_SESSIONS.reduce((n, s) => n + s.scans.length, 0),
+    };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("pack_report_summary");
+  if (error || !data) {
+    console.error("[repo] pack_report_summary failed", error);
+    return { sessions: 0, completed: 0, avgPackSeconds: 0, unitsScanned: 0 };
+  }
+  const m = data as Record<string, unknown>;
+  return {
+    sessions: Number(m.sessions ?? 0),
+    completed: Number(m.completed ?? 0),
+    avgPackSeconds: Number(m.avgPackSeconds ?? 0),
+    unitsScanned: Number(m.unitsScanned ?? 0),
+  };
+}
+
+export async function countPackableOrders(): Promise<number> {
+  if (!shouldUseSupabaseData()) {
+    return DEMO_ORDERS.filter(
+      (o) => ["paid", "allocated"].includes(o.status) && o.labelNumber,
+    ).length;
+  }
+  const supabase = await createSupabaseServerClient();
+  const res = await supabase
+    .from("orders")
+    .select("*", HEAD_COUNT)
+    .in("status", ["paid", "allocated"])
+    .not("label_number", "is", null);
+  return liveTotal("countPackableOrders", res);
 }
 
 export async function findOrderByLabel(label: string): Promise<Order | null> {
@@ -350,19 +540,41 @@ export async function findOrderByLabel(label: string): Promise<Order | null> {
   );
 }
 
-export async function listPackSessions(): Promise<PackSession[]> {
+export async function listPackSessions({
+  limit = 200,
+  offset = 0,
+}: { limit?: number; offset?: number } = {}): Promise<PackSession[]> {
   if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
     const res = await supabase
       .from("pack_sessions")
       .select(PACK_SESSION_SELECT)
+      // id breaks ties so paging cannot repeat or skip a session.
       .order("started_at", { ascending: false })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(offset, offset + limit - 1);
     return liveRows("listPackSessions", res).map(mapPackSession);
   }
-  return [...DEMO_PACK_SESSIONS].sort(
-    (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
-  );
+  return [...DEMO_PACK_SESSIONS]
+    .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
+    .slice(offset, offset + limit);
+}
+
+/**
+ * Every pack session, paged.
+ *
+ * Only for the CSV exports: they are the warehouse's accountability record, so
+ * truncating them at the page size would quietly drop scans from an audit.
+ */
+export async function listAllPackSessions(): Promise<PackSession[]> {
+  const pageSize = 200;
+  const out: PackSession[] = [];
+  for (let offset = 0; offset < 20_000; offset += pageSize) {
+    const page = await listPackSessions({ limit: pageSize, offset });
+    out.push(...page);
+    if (page.length < pageSize) break;
+  }
+  return out;
 }
 
 const PACK_SESSION_SELECT =

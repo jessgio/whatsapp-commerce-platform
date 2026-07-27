@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { can } from "@/lib/rbac";
-import { listPackSessions } from "@/lib/data/repo";
+import { listAllPackSessions } from "@/lib/data/repo";
 
 function csvCell(v: string | number): string {
   const s = String(v ?? "");
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   }
 
   const detail = req.nextUrl.searchParams.get("detail") === "1";
-  const sessions = await listPackSessions();
+  const sessions = await listAllPackSessions();
   const rows: (string | number)[][] = [];
 
   if (detail) {

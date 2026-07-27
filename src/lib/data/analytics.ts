@@ -64,6 +64,16 @@ export function computeSalesMetrics(
   const repeatCustomers = customers.filter((c) => c.orderCount >= 2).length;
   const buyers = customers.filter((c) => c.orderCount >= 1).length || 1;
 
+  // Retention: of the people who bought in the previous 30-day window, how many
+  // bought again in the last 30 days.
+  const priorBuyers = new Set(prev30.map((o) => o.customerId));
+  const recentBuyers = new Set(last30.map((o) => o.customerId));
+  let returned = 0;
+  for (const id of priorBuyers) if (recentBuyers.has(id)) returned += 1;
+  const retentionRatePct = priorBuyers.size
+    ? (returned / priorBuyers.size) * 100
+    : 0;
+
   const revenueByDay = Array.from({ length: 14 }, (_, i) => {
     const day = new Date(Date.now() - (13 - i) * 86400000);
     const key = day.toISOString().slice(0, 10);
@@ -102,7 +112,7 @@ export function computeSalesMetrics(
     totalCustomers: customers.length,
     newCustomers30d,
     repeatRatePct: (repeatCustomers / buyers) * 100,
-    retentionRatePct: Math.min(100, 48 + (repeatCustomers % 25)),
+    retentionRatePct,
     paidConversionPct: (paid.length / (orders.length || 1)) * 100,
     revenueByDay,
     topGrowing: withGrowth.slice(0, 4),

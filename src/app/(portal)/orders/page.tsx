@@ -1,11 +1,11 @@
 import { requirePermission } from "@/lib/guard";
-import { listOrders } from "@/lib/data/repo";
+import { countOrders, listOrders } from "@/lib/data/repo";
 import { PageHeader } from "@/components/ui";
 import { OrdersTable } from "@/components/orders/orders-table";
 
 export default async function OrdersPage() {
   await requirePermission("orders.view");
-  const orders = await listOrders();
+  const [orders, total] = await Promise.all([listOrders(), countOrders()]);
 
   return (
     <div>
@@ -13,7 +13,7 @@ export default async function OrdersPage() {
         title="Orders"
         subtitle="Orders from WhatsApp carts and agent-created sales"
       />
-      <OrdersTable orders={orders} />
+      <OrdersTable orders={orders} total={total} />
     </div>
   );
 }
