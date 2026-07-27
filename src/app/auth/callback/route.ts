@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { isAllowedStaffEmail, STAFF_EMAIL_DOMAIN } from "@/lib/auth-policy";
+import { homePathForRole } from "@/lib/rbac";
 import { createSupabaseAdminClient, createSupabaseServerClient } from "@/lib/supabase/server";
+import type { Role } from "@/lib/types";
 
 function redirectUrl(request: Request, path: string): URL {
   const { origin } = new URL(request.url);
@@ -65,5 +67,13 @@ export async function GET(request: Request) {
     );
   }
 
-  return NextResponse.redirect(redirectUrl(request, "/dashboard"));
+  const { data: profile } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  return NextResponse.redirect(
+    redirectUrl(request, profile ? homePathForRole(profile.role as Role) : "/"),
+  );
 }

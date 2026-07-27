@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { dataMode } from "@/lib/env";
 import { STAFF_EMAIL_DOMAIN } from "@/lib/auth-policy";
-import { ROLE_LABELS } from "@/lib/rbac";
+import { homePathForRole, ROLE_LABELS } from "@/lib/rbac";
 import { DEMO_USERS } from "@/lib/demo/data";
 import { Avatar } from "@/components/ui";
 import { GoogleIcon } from "@/components/google-icon";
@@ -15,7 +15,7 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const user = await getCurrentUser();
-  if (user) redirect("/dashboard");
+  if (user) redirect(homePathForRole(user.role));
   const { error } = await searchParams;
   const mode = dataMode();
 

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { dataMode } from "@/lib/env";
 import { STAFF_EMAIL_DOMAIN } from "@/lib/auth-policy";
+import { homePathForRole } from "@/lib/rbac";
 import { GoogleIcon } from "@/components/google-icon";
 import { signInWithGoogle, signUpWithPassword } from "@/app/auth-actions";
 
@@ -12,7 +13,7 @@ export default async function SignUpPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const user = await getCurrentUser();
-  if (user) redirect("/dashboard");
+  if (user) redirect(homePathForRole(user.role));
   if (dataMode() !== "supabase") redirect("/login");
 
   const { error } = await searchParams;

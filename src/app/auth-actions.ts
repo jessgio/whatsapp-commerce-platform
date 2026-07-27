@@ -6,6 +6,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { isAllowedStaffEmail, STAFF_EMAIL_DOMAIN } from "@/lib/auth-policy";
 import { createSupabaseAdminClient, createSupabaseServerClient } from "@/lib/supabase/server";
 import { DEMO_COOKIE, getCurrentUser } from "@/lib/auth";
+import { homePathForRole } from "@/lib/rbac";
 import { DEMO_USERS } from "@/lib/demo/data";
 
 function requestOrigin(headerStore: Headers): string {
@@ -25,7 +26,7 @@ export async function signInDemo(userId: string) {
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   });
-  redirect(user.role === "warehouse" ? "/warehouse" : user.role === "cs" ? "/cs-dashboard" : "/dashboard");
+  redirect(homePathForRole(user.role));
 }
 
 export async function signInWithGoogle() {
@@ -59,7 +60,8 @@ export async function signInWithPassword(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) redirect(`/login?error=${encodeURIComponent(error.message)}`);
-  redirect("/dashboard");
+  const user = await getCurrentUser();
+  redirect(user ? homePathForRole(user.role) : "/login");
 }
 
 export async function signUpWithPassword(formData: FormData) {
@@ -107,7 +109,7 @@ export async function signUpWithPassword(formData: FormData) {
         encodeURIComponent("Account created. Please sign in with your new credentials."),
     );
   }
-  redirect("/dashboard");
+  redirect(homePathForRole("sales"));
 }
 
 export async function changePassword(formData: FormData) {
