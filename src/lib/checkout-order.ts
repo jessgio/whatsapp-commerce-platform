@@ -36,14 +36,30 @@ export async function createCartOrderFromInbound(input: {
       source: "whatsapp",
       payload: { type: "order", wa_message_id: input.waMessageId, status: "creating" },
     });
-    if (claimErr) return null;
+    if (claimErr) {
+      // Only a unique violation means "already handled". Treating every error as
+      // a duplicate silently dropped real orders on transient database failures.
+      if (claimErr.code !== "23505") {
+        console.error("[checkout] idempotency claim failed", claimErr);
+      }
+      return null;
+    }
   }
 
   const skus = [...new Set(parsed.items.map((i) => i.retailerId))];
-  const { data: products } = await input.supabase
+  const { data: products, error: productsErr } = await input.supabase
     .from("products")
     .select("id, sku, name, retail_price, discount_percent")
     .in("sku", skus);
+  if (productsErr) {
+    // Falling back to cart prices here would bypass catalog discounts, so bail
+    // and let the webhook retry rather than quote the customer a wrong total.
+    console.error("[checkout] catalog lookup failed", productsErr);
+    if (eventId) {
+      await input.supabase.from("webhook_events").delete().eq("id", eventId);
+    }
+    return null;
+  }
 
   const bySku = new Map((products ?? []).map((p) => [p.sku as string, p]));
 
@@ -113,6 +129,27 @@ export async function createCartOrderFromInbound(input: {
     return null;
   }
 
+  const { error: itemsErr } = await input.supabase.from("order_items").insert(
+    lineItems.map((it) => ({
+      order_id: order.id,
+      product_id: it.product_id,
+      sku: it.sku,
+      name: it.name,
+      qty: it.qty,
+      unit_price: it.unit_price,
+    })),
+  );
+  if (itemsErr) {
+    // An order with a total but no line items would still have been sent to the
+    // customer as a payable checkout link. Undo it and let the retry rebuild it.
+    console.error("[checkout] create order_items failed", itemsErr);
+    await input.supabase.from("orders").delete().eq("id", order.id);
+    if (eventId) {
+      await input.supabase.from("webhook_events").delete().eq("id", eventId);
+    }
+    return null;
+  }
+
   if (eventId) {
     await input.supabase
       .from("webhook_events")
@@ -126,20 +163,6 @@ export async function createCartOrderFromInbound(input: {
         },
       })
       .eq("id", eventId);
-  }
-
-  const { error: itemsErr } = await input.supabase.from("order_items").insert(
-    lineItems.map((it) => ({
-      order_id: order.id,
-      product_id: it.product_id,
-      sku: it.sku,
-      name: it.name,
-      qty: it.qty,
-      unit_price: it.unit_price,
-    })),
-  );
-  if (itemsErr) {
-    console.error("[checkout] create order_items failed", itemsErr);
   }
 
   const link = checkoutUrl(token);

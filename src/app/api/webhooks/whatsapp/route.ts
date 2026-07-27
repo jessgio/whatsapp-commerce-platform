@@ -66,20 +66,30 @@ export async function POST(req: NextRequest) {
   const supabase = createSupabaseAdminClient();
 
   for (const msg of inbound) {
-    // 1) Upsert customer keyed off the stable wa_id.
-    const { data: customer } = await supabase
-      .from("customers")
-      .upsert(
-        { wa_id: msg.waId, name: msg.name ?? msg.waId, phone: `+${msg.waId}` },
-        { onConflict: "wa_id" },
-      )
-      .select("id")
-      .single();
+    // 1) Upsert customer keyed off the stable wa_id. `ignoreDuplicates` keeps an
+    // existing row untouched: writing name/phone on every message overwrote
+    // staff CRM edits with whatever the customer's WhatsApp profile says.
+    const { error: upsertErr } = await supabase.from("customers").upsert(
+      { wa_id: msg.waId, name: msg.name ?? msg.waId, phone: `+${msg.waId}` },
+      { onConflict: "wa_id", ignoreDuplicates: true },
+    );
+    if (upsertErr) {
+      console.error("[webhook:whatsapp] customer upsert failed", upsertErr);
+      continue;
+    }
 
-    if (!customer) continue;
+    const { data: customer, error: customerErr } = await supabase
+      .from("customers")
+      .select("id")
+      .eq("wa_id", msg.waId)
+      .maybeSingle();
+    if (customerErr || !customer) {
+      console.error("[webhook:whatsapp] customer lookup failed", customerErr);
+      continue;
+    }
 
     // 2) Ensure an open conversation exists.
-    const { data: conv } = await supabase
+    const { data: conv, error: convErr } = await supabase
       .from("conversations")
       .upsert(
         {
@@ -94,7 +104,10 @@ export async function POST(req: NextRequest) {
       .select("id")
       .single();
 
-    if (!conv) continue;
+    if (convErr || !conv) {
+      console.error("[webhook:whatsapp] conversation upsert failed", convErr);
+      continue;
+    }
 
     const isOrder = msg.type === "order" && Boolean(parseWhatsAppOrder(msg.raw));
 
@@ -122,7 +135,7 @@ export async function POST(req: NextRequest) {
       if (existing) continue;
     }
 
-    await supabase.from("messages").insert({
+    const { error: messageErr } = await supabase.from("messages").insert({
       conversation_id: conv.id,
       direction: "in",
       kind: isOrder ? "order" : msg.type === "text" ? "text" : "system",
@@ -130,6 +143,9 @@ export async function POST(req: NextRequest) {
       wa_message_id: msg.messageId,
       created_at: msg.timestamp,
     });
+    if (messageErr) {
+      console.error("[webhook:whatsapp] append inbound message failed", messageErr);
+    }
   }
 
   return NextResponse.json({ ok: true, received: inbound.length });
