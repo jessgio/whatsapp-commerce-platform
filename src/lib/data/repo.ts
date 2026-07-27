@@ -1,4 +1,5 @@
 import "server-only";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { shouldUseSupabaseData } from "@/lib/data/mode";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -32,17 +33,45 @@ import type {
  * import from here, so swapping storage never touches the UI layer.
  */
 
+/**
+ * Unwraps a live multi-row read. A failed query must never fall through to the
+ * demo dataset, or an outage/RLS misconfiguration would show staff fabricated
+ * customers and orders that look entirely real.
+ */
+function liveRows<T>(
+  scope: string,
+  { data, error }: { data: T[] | null; error: PostgrestError | null },
+): T[] {
+  if (error) {
+    console.error(`[repo] ${scope} failed`, error);
+    return [];
+  }
+  return data ?? [];
+}
+
+/** Single-row variant of {@link liveRows}. */
+function liveRow<T>(
+  scope: string,
+  { data, error }: { data: T | null; error: PostgrestError | null },
+): T | null {
+  if (error) {
+    console.error(`[repo] ${scope} failed`, error);
+    return null;
+  }
+  return data;
+}
+
 /* ---------- Customers ---------- */
 
 export async function listCustomers(): Promise<Customer[]> {
   if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
-    const { data } = await supabase
+    const res = await supabase
       .from("customers")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(500);
-    if (data) return data.map(mapCustomer);
+    return liveRows("listCustomers", res).map(mapCustomer);
   }
   return DEMO_CUSTOMERS;
 }
@@ -50,9 +79,9 @@ export async function listCustomers(): Promise<Customer[]> {
 export async function getCustomer(id: string): Promise<Customer | null> {
   if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
-    const { data } = await supabase.from("customers").select("*").eq("id", id).single();
-    if (data) return mapCustomer(data);
-    return null;
+    const res = await supabase.from("customers").select("*").eq("id", id).maybeSingle();
+    const row = liveRow("getCustomer", res);
+    return row ? mapCustomer(row) : null;
   }
   return DEMO_CUSTOMERS.find((c) => c.id === id) ?? null;
 }
@@ -60,8 +89,8 @@ export async function getCustomer(id: string): Promise<Customer | null> {
 export async function getCustomerAddresses(customerId: string): Promise<Address[]> {
   if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
-    const { data } = await supabase.from("addresses").select("*").eq("customer_id", customerId);
-    if (data) return data.map(mapAddress);
+    const res = await supabase.from("addresses").select("*").eq("customer_id", customerId);
+    return liveRows("getCustomerAddresses", res).map(mapAddress);
   }
   return DEMO_ADDRESSES.filter((a) => a.customerId === customerId);
 }
@@ -71,14 +100,14 @@ export async function getCustomerAddresses(customerId: string): Promise<Address[
 export async function listConversations(): Promise<Conversation[]> {
   if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
-    const { data } = await supabase
+    const res = await supabase
       .from("conversations")
       .select(
         "*, customers!conversations_customer_id_fkey(name, wa_id), users!conversations_assignee_id_fkey(name)",
       )
       .order("last_message_at", { ascending: false })
       .limit(200);
-    if (data) return data.map(mapConversation);
+    return liveRows("listConversations", res).map(mapConversation);
   }
   return DEMO_CONVERSATIONS.slice().sort(
     (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime(),
@@ -88,15 +117,15 @@ export async function listConversations(): Promise<Conversation[]> {
 export async function getConversation(id: string): Promise<Conversation | null> {
   if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
-    const { data } = await supabase
+    const res = await supabase
       .from("conversations")
       .select(
         "*, customers!conversations_customer_id_fkey(name, wa_id), users!conversations_assignee_id_fkey(name)",
       )
       .eq("id", id)
       .maybeSingle();
-    if (data) return mapConversation(data);
-    return null;
+    const row = liveRow("getConversation", res);
+    return row ? mapConversation(row) : null;
   }
   return DEMO_CONVERSATIONS.find((c) => c.id === id) ?? null;
 }
@@ -104,12 +133,12 @@ export async function getConversation(id: string): Promise<Conversation | null> 
 export async function listMessages(conversationId: string): Promise<Message[]> {
   if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
-    const { data } = await supabase
+    const res = await supabase
       .from("messages")
       .select("*")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true });
-    if (data) return data.map(mapMessage);
+    return liveRows("listMessages", res).map(mapMessage);
   }
   return demoMessages(conversationId);
 }
@@ -119,8 +148,8 @@ export async function listMessages(conversationId: string): Promise<Message[]> {
 export async function listProducts(): Promise<Product[]> {
   if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
-    const { data } = await supabase.from("products").select("*").order("name");
-    if (data) return data.map(mapProduct);
+    const res = await supabase.from("products").select("*").order("name");
+    return liveRows("listProducts", res).map(mapProduct);
   }
   return DEMO_PRODUCTS;
 }
@@ -130,14 +159,14 @@ export async function listProducts(): Promise<Product[]> {
 export async function listOrders(): Promise<Order[]> {
   if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
-    const { data } = await supabase
+    const res = await supabase
       .from("orders")
       .select(
         "*, customers!orders_customer_id_fkey(name), order_items(product_id, sku, name, qty, unit_price)",
       )
       .order("created_at", { ascending: false })
       .limit(500);
-    if (data) return data.map(mapOrder);
+    return liveRows("listOrders", res).map(mapOrder);
   }
   return DEMO_ORDERS.slice().sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -147,15 +176,15 @@ export async function listOrders(): Promise<Order[]> {
 export async function getOrder(id: string): Promise<Order | null> {
   if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
-    const { data } = await supabase
+    const res = await supabase
       .from("orders")
       .select(
         "*, customers!orders_customer_id_fkey(name), order_items(product_id, sku, name, qty, unit_price)",
       )
       .eq("id", id)
       .maybeSingle();
-    if (data) return mapOrder(data);
-    return null;
+    const row = liveRow("getOrder", res);
+    return row ? mapOrder(row) : null;
   }
   return DEMO_ORDERS.find((o) => o.id === id) ?? null;
 }
@@ -163,15 +192,14 @@ export async function getOrder(id: string): Promise<Order | null> {
 export async function listOrdersForCustomer(customerId: string): Promise<Order[]> {
   if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
-    const { data } = await supabase
+    const res = await supabase
       .from("orders")
       .select(
         "*, customers!orders_customer_id_fkey(name), order_items(product_id, sku, name, qty, unit_price)",
       )
       .eq("customer_id", customerId)
       .order("created_at", { ascending: false });
-    if (data) return data.map(mapOrder);
-    return [];
+    return liveRows("listOrdersForCustomer", res).map(mapOrder);
   }
   return DEMO_ORDERS.filter((o) => o.customerId === customerId);
 }
