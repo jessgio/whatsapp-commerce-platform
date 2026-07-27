@@ -6,8 +6,10 @@ import { Search } from "lucide-react";
 import { Avatar, Table, Th, Td } from "@/components/ui";
 import { ConsentBadge } from "@/components/status";
 import { formatIDRCompact, formatDate } from "@/lib/format";
-import { filterCustomersByRules, type SegmentDefinition } from "@/lib/segments";
+import { customerMatchesRules, type SegmentDefinition } from "@/lib/segments";
 import type { Customer } from "@/lib/types";
+
+const MAX_ROWS = 100;
 
 export function CustomerTable({
   customers,
@@ -24,6 +26,9 @@ export function CustomerTable({
   const filtered = useMemo(() => {
     const term = q.toLowerCase();
     const saved = segments.find((s) => s.id === segment);
+    // One clock reading for the whole pass; rule matching is relative to "now"
+    // and a per-row Date would also make the results inconsistent mid-filter.
+    const now = new Date();
 
     return customers.filter((c) => {
       const matchesTerm =
@@ -36,11 +41,13 @@ export function CustomerTable({
       if (!matchesTerm) return false;
 
       if (segment === "all") return true;
-      if (saved) return filterCustomersByRules([c], saved.rules).length > 0;
+      if (saved) return customerMatchesRules(c, saved.rules, now);
       // Built-in legacy labels still stored on customers.segments
       return c.segments.includes(segment);
     });
   }, [customers, q, segment, segments]);
+
+  const visible = filtered.slice(0, MAX_ROWS);
 
   return (
     <div>
@@ -96,7 +103,7 @@ export function CustomerTable({
           </tr>
         </thead>
         <tbody>
-          {filtered.slice(0, 100).map((c) => (
+          {visible.map((c) => (
             <tr key={c.id} className="transition-colors hover:bg-surface-muted">
               <Td>
                 <Link href={`/customers/${c.id}`} className="flex items-center gap-3">
@@ -126,6 +133,13 @@ export function CustomerTable({
           ))}
         </tbody>
       </Table>
+
+      {filtered.length > visible.length && (
+        <p className="mt-3 text-center text-xs text-muted">
+          Showing the first {MAX_ROWS} of {filtered.length}. Narrow the search or
+          pick a segment to see the rest.
+        </p>
+      )}
     </div>
   );
 }

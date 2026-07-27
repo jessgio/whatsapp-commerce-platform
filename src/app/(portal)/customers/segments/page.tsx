@@ -4,7 +4,7 @@ import { requirePermission } from "@/lib/guard";
 import { can } from "@/lib/rbac";
 import { listCustomers } from "@/lib/data/repo";
 import { listSegmentDefinitions } from "@/lib/data/segments";
-import { filterCustomersByRules, summarizeCondition } from "@/lib/segments";
+import { countCustomersByRules, summarizeCondition } from "@/lib/segments";
 import { Button, PageHeader } from "@/components/ui";
 
 export default async function CustomerSegmentsPage() {
@@ -14,6 +14,8 @@ export default async function CustomerSegmentsPage() {
     listCustomers(),
   ]);
   const canEdit = can(user.role, "customers.edit");
+  // One clock reading so every segment's count is measured against the same instant.
+  const now = new Date();
 
   return (
     <div>
@@ -61,7 +63,7 @@ export default async function CustomerSegmentsPage() {
             </thead>
             <tbody>
               {segments.map((seg) => {
-                const count = filterCustomersByRules(customers, seg.rules).length;
+                const count = countCustomersByRules(customers, seg.rules, now);
                 return (
                   <tr
                     key={seg.id}

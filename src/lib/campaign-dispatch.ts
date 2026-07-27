@@ -1,4 +1,5 @@
 import "server-only";
+import { mapWithConcurrency } from "@/lib/concurrency";
 import {
   claimCampaignForSend,
   getCampaign,
@@ -22,6 +23,13 @@ import type { Campaign } from "@/lib/campaigns";
 import type { Customer } from "@/lib/types";
 
 const WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Messages in flight against the Graph API. Sending one at a time made send
+ * time linear in audience size — a few hundred recipients at ~250ms each ran
+ * past the function timeout. Conservative next to Meta's per-number throughput.
+ */
+const WA_CONCURRENCY = 8;
 
 export type DispatchResult = {
   ok: boolean;
@@ -66,36 +74,38 @@ async function resolveAudience(campaign: Campaign): Promise<{
   return { ok: true, audience };
 }
 
+function tally(results: Array<{ ok: boolean }>): {
+  sent: number;
+  failed: number;
+  skipped: number;
+} {
+  const sent = results.filter((r) => r.ok).length;
+  return { sent, failed: results.length - sent, skipped: 0 };
+}
+
 async function dispatchWhatsApp(
   campaign: Campaign,
   audience: Customer[],
 ): Promise<{ sent: number; failed: number; skipped: number; error?: string }> {
-  let sent = 0;
-  let failed = 0;
-  let skipped = 0;
-
   if (campaign.waMode === "template" && campaign.waDesignId) {
     const design = await getWaTemplateDesign(campaign.waDesignId);
     if (!design) {
       return { sent: 0, failed: 0, skipped: 0, error: "WhatsApp template design missing." };
     }
 
-    for (const customer of audience) {
-      const to = customer.waId || customer.phone;
+    const results = await mapWithConcurrency(audience, WA_CONCURRENCY, (customer) => {
       const components = buildTemplateComponents(design, {
         ...design.variableDefaults,
         "1": firstName(customer.name),
       });
-      const result = await sendTemplate(
-        to,
+      return sendTemplate(
+        customer.waId || customer.phone,
         design.metaTemplateName,
         design.languageCode,
         components.length ? components : undefined,
       );
-      if (result.ok) sent += 1;
-      else failed += 1;
-    }
-    return { sent, failed, skipped };
+    });
+    return tally(results);
   }
 
   if (campaign.waMode === "interactive" && campaign.waDesignId) {
@@ -109,18 +119,16 @@ async function dispatchWhatsApp(
       conversations.map((c) => [c.customerId, c.lastInboundAt] as const),
     );
 
-    for (const customer of audience) {
-      const lastInbound = inboundByCustomer.get(customer.id) ?? null;
-      if (!inMessagingWindow(lastInbound)) {
-        skipped += 1;
-        continue;
-      }
-      const to = customer.waId || customer.phone;
-      const result = await sendInteractiveDesign(to, design);
-      if (result.ok) sent += 1;
-      else failed += 1;
-    }
-    return { sent, failed, skipped };
+    // Interactive messages are only deliverable inside the 24h service window.
+    const reachable = audience.filter((c) =>
+      inMessagingWindow(inboundByCustomer.get(c.id) ?? null),
+    );
+    const skipped = audience.length - reachable.length;
+
+    const results = await mapWithConcurrency(reachable, WA_CONCURRENCY, (customer) =>
+      sendInteractiveDesign(customer.waId || customer.phone, design),
+    );
+    return { ...tally(results), skipped };
   }
 
   return {

@@ -253,6 +253,19 @@ export function filterCustomersByRules(
   return customers.filter((c) => customerMatchesRules(c, rules, now));
 }
 
+/** Member count without materialising the member list. */
+export function countCustomersByRules(
+  customers: Customer[],
+  rules: SegmentRules,
+  now = new Date(),
+): number {
+  let count = 0;
+  for (const c of customers) {
+    if (customerMatchesRules(c, rules, now)) count += 1;
+  }
+  return count;
+}
+
 export function newCondition(
   field: SegmentField = "lifetime_value",
 ): SegmentCondition {

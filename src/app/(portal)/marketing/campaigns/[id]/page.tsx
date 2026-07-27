@@ -11,7 +11,7 @@ import {
   listWaInteractiveDesigns,
   listWaTemplateDesigns,
 } from "@/lib/data/whatsapp-designs";
-import { filterCustomersByRules } from "@/lib/segments";
+import { countCustomersByRules } from "@/lib/segments";
 import { PageHeader } from "@/components/ui";
 import { CampaignForm } from "@/components/marketing/campaign-form";
 
@@ -22,11 +22,10 @@ export default async function CampaignDetailPage({
 }) {
   const user = await requirePermission("marketing.view");
   const { id } = await params;
-  const campaign = await getCampaign(id);
-  if (!campaign) notFound();
 
-  const [segments, customers, templates, interactive, emails, fonts] =
+  const [campaign, segments, customers, templates, interactive, emails, fonts] =
     await Promise.all([
+      getCampaign(id),
       listSegmentDefinitions(),
       listCustomers(),
       listWaTemplateDesigns(),
@@ -34,22 +33,24 @@ export default async function CampaignDetailPage({
       listEmailTemplates(),
       listEmailFonts(),
     ]);
+  if (!campaign) notFound();
+
+  // A campaign can only reach opted-in customers, so narrow once rather than
+  // re-filtering the whole list for every segment in the dropdown.
+  const reachable = customers.filter((c) => c.consentStatus === "opted_in");
+  const now = new Date();
 
   const segmentOptions = segments.map((s) => ({
     id: s.id,
     name: s.name,
-    memberCount: filterCustomersByRules(customers, s.rules).filter(
-      (c) => c.consentStatus === "opted_in",
-    ).length,
+    memberCount: countCustomersByRules(reachable, s.rules, now),
   }));
 
   const selected = campaign.segmentId
     ? segments.find((s) => s.id === campaign.segmentId)
     : null;
   const audienceCount = selected
-    ? filterCustomersByRules(customers, selected.rules).filter(
-        (c) => c.consentStatus === "opted_in",
-      ).length
+    ? countCustomersByRules(reachable, selected.rules, now)
     : 0;
 
   return (

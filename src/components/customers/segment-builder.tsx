@@ -9,7 +9,7 @@ import {
   OP_LABELS,
   SEGMENT_FIELD_OPTIONS,
   emptyRules,
-  filterCustomersByRules,
+  countCustomersByRules,
   newCondition,
   type SegmentCondition,
   type SegmentDefinition,
@@ -41,7 +41,7 @@ export function SegmentBuilder({
   const [pending, startTransition] = useTransition();
 
   const previewCount = useMemo(
-    () => filterCustomersByRules(customers, rules).length,
+    () => countCustomersByRules(customers, rules),
     [customers, rules],
   );
 
