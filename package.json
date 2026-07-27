@@ -8,6 +8,7 @@
     "start": "node --max-http-header-size=131072 ./node_modules/next/dist/bin/next start",
     "lint": "eslint",
     "mobile": "npm --prefix mobile start",
+    "mobile:typecheck": "tsc -p mobile/tsconfig.json --noEmit",
     "biteship:test-orders": "node scripts/create-biteship-test-orders.mjs",
     "vercel:env": "node scripts/sync-vercel-env.mjs"
   },
