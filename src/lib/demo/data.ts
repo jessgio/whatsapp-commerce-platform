@@ -251,11 +251,40 @@ export const DEMO_CONVERSATIONS: Conversation[] = Array.from({ length: 28 }, (_,
   };
 });
 
+/** Outbound replies appended during demo/staff-demo sessions (process memory). */
+const DEMO_OUTBOUND_EXTRA = new Map<string, Message[]>();
+
+export function appendDemoOutboundMessage(
+  conversationId: string,
+  body: string,
+  authorName = "You",
+): Message {
+  const msg: Message = {
+    id: `${conversationId}-out-${Date.now()}`,
+    conversationId,
+    direction: "out",
+    kind: "text",
+    body,
+    createdAt: new Date().toISOString(),
+    authorName,
+    status: "sent",
+  };
+  const list = DEMO_OUTBOUND_EXTRA.get(conversationId) ?? [];
+  list.push(msg);
+  DEMO_OUTBOUND_EXTRA.set(conversationId, list);
+  const conv = DEMO_CONVERSATIONS.find((c) => c.id === conversationId);
+  if (conv) {
+    conv.lastMessagePreview = body;
+    conv.lastMessageAt = msg.createdAt;
+  }
+  return msg;
+}
+
 export function demoMessages(conversationId: string): Message[] {
   const idx = Number(conversationId.split("-")[1] ?? 1);
   const conv = DEMO_CONVERSATIONS.find((c) => c.id === conversationId);
   const agentName = conv?.assigneeName ?? "Dewi Lestari";
-  return [
+  const base: Message[] = [
     { id: `${conversationId}-m1`, conversationId, direction: "in", kind: "text", body: pick(PREVIEWS, idx), createdAt: minsAgo(180), authorName: null, status: null },
     { id: `${conversationId}-m2`, conversationId, direction: "out", kind: "text", body: "Halo kak! Iya betul masih ready ya. Mau dibantu pesan sekarang?", createdAt: minsAgo(176), authorName: agentName, status: "read" },
     { id: `${conversationId}-m3`, conversationId, direction: "in", kind: "text", body: "Boleh kak, yang warna merlot ya. Ongkir ke Bandung berapa?", createdAt: minsAgo(170), authorName: null, status: null },
@@ -263,6 +292,7 @@ export function demoMessages(conversationId: string): Message[] {
     { id: `${conversationId}-m5`, conversationId, direction: "out", kind: "order", body: "Order WA-24018 · Merlot Silk Scarf x1 · Total Rp207.000", createdAt: minsAgo(167), authorName: agentName, status: "delivered" },
     { id: `${conversationId}-m6`, conversationId, direction: "in", kind: "text", body: pick(PREVIEWS, idx + 2), createdAt: minsAgo(conv ? Math.min(160, (idx * 37) % 1600) : 30), authorName: null, status: null },
   ];
+  return base.concat(DEMO_OUTBOUND_EXTRA.get(conversationId) ?? []);
 }
 
 /* ------------------------------------------------------------------ */

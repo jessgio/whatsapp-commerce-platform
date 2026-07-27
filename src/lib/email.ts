@@ -1,6 +1,7 @@
 import { render } from "@react-email/render";
 import { Resend } from "resend";
 import { LeadWelcomeEmail } from "@/emails/lead-welcome";
+import { listEmailFontsAdmin } from "@/lib/data/email-fonts";
 import { getLeadWelcomeTemplateAdmin } from "@/lib/data/email-templates";
 import { applyTemplateVars } from "@/lib/email-templates";
 import { leadEditUrl } from "@/lib/lead-edit";
@@ -35,7 +36,10 @@ export async function sendLeadWelcomeEmail(input: {
   }
 
   try {
-    const template = await getLeadWelcomeTemplateAdmin();
+    const [template, customFonts] = await Promise.all([
+      getLeadWelcomeTemplateAdmin(),
+      listEmailFontsAdmin(),
+    ]);
     const discountCode = input.discountCode ?? LEAD_DISCOUNT_CODE;
     const editUrl = leadEditUrl(input.editToken);
     const vars = { name: input.name, editUrl };
@@ -48,6 +52,7 @@ export async function sendLeadWelcomeEmail(input: {
         discountCode,
         template,
         editUrl,
+        customFonts,
       }),
     );
 

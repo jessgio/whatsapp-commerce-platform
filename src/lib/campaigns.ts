@@ -20,7 +20,9 @@ export type Campaign = {
   /** WhatsApp only */
   waMode: CampaignWaMode | null;
   waDesignId: string | null;
-  /** Email only — inline design (reuses email block editor) */
+  /** Email only — optional library template this campaign was loaded from */
+  emailTemplateId: string | null;
+  /** Email only — inline design snapshot (reuses email block editor) */
   emailSubject: string | null;
   emailAccentColor: string | null;
   emailBlocks: EmailBlock[] | null;
@@ -51,6 +53,7 @@ export function emptyCampaign(partial?: Partial<Campaign>): Campaign {
     scheduledAt: partial?.scheduledAt ?? null,
     waMode: partial?.waMode ?? "template",
     waDesignId: partial?.waDesignId ?? null,
+    emailTemplateId: partial?.emailTemplateId ?? null,
     emailSubject: partial?.emailSubject ?? null,
     emailAccentColor: partial?.emailAccentColor ?? "#6f2c3f",
     emailBlocks: partial?.emailBlocks ?? null,

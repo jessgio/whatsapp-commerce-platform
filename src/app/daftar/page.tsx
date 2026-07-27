@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { BrandMark } from "@/components/brand-mark";
 import { LeadForm } from "@/components/leads/lead-form";
+import { getActiveFormTemplate } from "@/lib/data/form-templates";
 
 export const metadata: Metadata = {
   title: "Daftar | Aeris Beauté",
@@ -14,7 +15,9 @@ export const metadata: Metadata = {
     description: "Lengkapi data kontak Anda untuk Aeris Beauté.",
     url: "https://join.aerisbeaute.com/daftar",
     siteName: "Aeris Beauté",
-    images: [{ url: "/brand/og-icon.png", width: 512, height: 512, alt: "Aeris Beauté" }],
+    images: [
+      { url: "/brand/og-icon.png", width: 512, height: 512, alt: "Aeris Beauté" },
+    ],
     type: "website",
   },
   twitter: {
@@ -25,7 +28,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function DaftarPage() {
+export default async function DaftarPage() {
+  const template = await getActiveFormTemplate();
+  const { formPage, fields } = template;
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
       <div
@@ -38,20 +44,19 @@ export default function DaftarPage() {
             <BrandMark size={40} />
             <div>
               <p className="text-lg font-semibold tracking-tight text-foreground">
-                Aeris Beauté
+                {formPage.brandTitle}
               </p>
-              <p className="text-xs text-muted">Formulir data pelanggan</p>
+              <p className="text-xs text-muted">{formPage.eyebrow}</p>
             </div>
           </div>
 
-          <h1 className="text-xl font-semibold text-foreground">Lengkapi data Anda</h1>
-          <p className="mt-1 text-sm text-muted">
-            Isi formulir di bawah ini untuk mendapatkan kode diskon. Data Anda
-            akan disimpan di sistem internal kami secara baik dan aman.
-          </p>
+          <h1 className="text-xl font-semibold text-foreground">
+            {formPage.headline}
+          </h1>
+          <p className="mt-1 text-sm text-muted">{formPage.intro}</p>
 
           <div className="mt-6">
-            <LeadForm />
+            <LeadForm fields={fields} submitLabel={formPage.submitLabel} />
           </div>
         </div>
       </div>

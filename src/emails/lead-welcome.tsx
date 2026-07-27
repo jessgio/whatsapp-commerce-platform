@@ -1,20 +1,29 @@
 /**
- * Renders the lead welcome email from designer blocks.
+ * Renders the lead welcome / campaign email from designer blocks.
  */
 import * as React from "react";
 import type { EmailBlock } from "@/lib/email-blocks";
+import { buildFontFaceCss, type EmailCustomFont } from "@/lib/email-fonts";
 import { renderEmailMarkdown } from "@/lib/email-markdown";
 import {
   applyTemplateVars,
   type EmailTemplate,
   type TemplateVars,
 } from "@/lib/email-templates";
+import {
+  clampFontSize,
+  isHexColor,
+  resolveFontFamily,
+  textStyleToCss,
+} from "@/lib/email-style";
 
 export type LeadWelcomeEmailProps = {
   name: string;
   discountCode: string;
   template: EmailTemplate;
   editUrl?: string;
+  /** Uploaded brand fonts — injected as @font-face where clients allow. */
+  customFonts?: EmailCustomFont[];
 };
 
 const base = {
@@ -25,18 +34,16 @@ const base = {
   border: "#e6dccb",
 };
 
-const sans =
-  '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-
 function renderBlock(
   block: EmailBlock,
   ctx: {
     vars: TemplateVars;
     discountCode: string;
     accent: string;
+    customFonts: EmailCustomFont[];
   },
 ) {
-  const { vars, discountCode, accent } = ctx;
+  const { vars, discountCode, accent, customFonts } = ctx;
 
   switch (block.type) {
     case "header": {
@@ -44,13 +51,26 @@ function renderBlock(
       const showLogo = Boolean(logoUrl);
       const showLetterMark = !showLogo && block.showMark;
       const showBrandName = Boolean(block.brandName?.trim());
+      const brandCss = textStyleToCss(
+        block.style,
+        {
+          fontFamily: "sans",
+          fontSize: 18,
+          fontWeight: 600,
+          align: "center",
+          color: "#fbf6ee",
+          letterSpacing: 0.02,
+        },
+        customFonts,
+      );
+      const align = brandCss.textAlign ?? "center";
       return (
         <div
           key={block.id}
           style={{
             backgroundColor: accent,
             padding: "28px 32px",
-            textAlign: "center" as const,
+            textAlign: align,
           }}
         >
           {showLogo ? (
@@ -61,7 +81,12 @@ function renderBlock(
               width={160}
               style={{
                 display: "block",
-                margin: "0 auto",
+                margin:
+                  align === "left"
+                    ? "0 auto 0 0"
+                    : align === "right"
+                      ? "0 0 0 auto"
+                      : "0 auto",
                 maxWidth: 160,
                 maxHeight: 72,
                 width: "auto",
@@ -81,7 +106,11 @@ function renderBlock(
                 borderRadius: 10,
                 backgroundColor: "rgba(255,255,255,0.15)",
                 color: "#fbf6ee",
-                fontFamily: sans,
+                fontFamily: resolveFontFamily(
+                  block.style?.fontFamily,
+                  "sans",
+                  customFonts,
+                ),
                 fontWeight: 700,
                 fontSize: 18,
               }}
@@ -93,10 +122,7 @@ function renderBlock(
             <p
               style={{
                 margin: showLogo || showLetterMark ? "12px 0 0" : 0,
-                color: "#fbf6ee",
-                fontSize: 18,
-                fontWeight: 600,
-                letterSpacing: "0.02em",
+                ...brandCss,
               }}
             >
               {block.brandName}
@@ -108,6 +134,12 @@ function renderBlock(
 
     case "image": {
       if (!block.src) return null;
+      const widthPercent = Math.min(
+        100,
+        Math.max(40, Math.round(block.style?.widthPercent ?? 100)),
+      );
+      const radius = Math.min(24, Math.max(0, block.style?.borderRadius ?? 0));
+      const align = block.style?.align ?? "center";
       const img = (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -116,67 +148,117 @@ function renderBlock(
           width={520}
           style={{
             display: "block",
-            width: "100%",
-            maxHeight: 280,
+            width: `${widthPercent}%`,
+            maxWidth: "100%",
+            height: "auto",
+            maxHeight: 320,
             objectFit: "cover" as const,
             border: 0,
+            borderRadius: radius,
+            margin:
+              align === "left"
+                ? "0 auto 0 0"
+                : align === "right"
+                  ? "0 0 0 auto"
+                  : "0 auto",
           }}
         />
       );
       const href = applyTemplateVars(block.href?.trim() ?? "", vars);
+      const wrapStyle: React.CSSProperties = {
+        padding: "0",
+        textAlign: align,
+      };
       if (href && /^https?:\/\//i.test(href)) {
         return (
-          <a
-            key={block.id}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ display: "block", textDecoration: "none" }}
-          >
-            {img}
-          </a>
+          <div key={block.id} style={wrapStyle}>
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: "inline-block", textDecoration: "none" }}
+            >
+              {img}
+            </a>
+          </div>
         );
       }
-      return <React.Fragment key={block.id}>{img}</React.Fragment>;
+      return (
+        <div key={block.id} style={wrapStyle}>
+          {img}
+        </div>
+      );
     }
 
-    case "heading":
+    case "heading": {
+      const css = textStyleToCss(
+        block.style,
+        {
+          fontFamily: "serif",
+          fontSize: 24,
+          fontWeight: 600,
+          align: "left",
+          color: base.charcoal,
+          lineHeight: 1.3,
+        },
+        customFonts,
+      );
       return (
         <h1
           key={block.id}
           style={{
             margin: "0 0 12px",
             padding: "28px 32px 0",
-            fontSize: 24,
-            fontWeight: 600,
-            lineHeight: 1.3,
-            color: base.charcoal,
-            fontFamily: 'Georgia, "Times New Roman", Times, serif',
+            ...css,
           }}
         >
           {renderEmailMarkdown(block.text, vars, accent)}
         </h1>
       );
+    }
 
-    case "text":
+    case "text": {
       if (!block.text.trim()) return null;
+      const css = textStyleToCss(
+        block.style,
+        {
+          fontFamily: "sans",
+          fontSize: 16,
+          fontWeight: 400,
+          align: "left",
+          color: base.muted,
+          lineHeight: 1.6,
+        },
+        customFonts,
+      );
       return (
         <p
           key={block.id}
           style={{
             margin: "0 0 16px",
             padding: "0 32px",
-            fontSize: 16,
-            lineHeight: 1.6,
-            color: base.muted,
-            fontFamily: sans,
+            ...css,
           }}
         >
           {renderEmailMarkdown(block.text, vars, accent)}
         </p>
       );
+    }
 
-    case "discount":
+    case "discount": {
+      const align = block.style?.align ?? "center";
+      const labelCss = textStyleToCss(
+        block.style,
+        {
+          fontFamily: "sans",
+          fontSize: 11,
+          fontWeight: 400,
+          align,
+          color: base.muted,
+          letterSpacing: 0.12,
+        },
+        customFonts,
+      );
       return (
         <div key={block.id} style={{ padding: "8px 32px 16px" }}>
           <div
@@ -185,17 +267,15 @@ function renderBlock(
               backgroundColor: "#fbf6ee",
               borderRadius: 12,
               padding: "20px 16px",
-              textAlign: "center" as const,
+              textAlign: align,
             }}
           >
             <p
               style={{
                 margin: 0,
-                fontSize: 11,
-                letterSpacing: "0.12em",
                 textTransform: "uppercase" as const,
-                color: base.muted,
-                fontFamily: sans,
+                ...labelCss,
+                fontSize: clampFontSize(block.style?.fontSize, 11),
               }}
             >
               {block.label}
@@ -207,8 +287,8 @@ function renderBlock(
                 fontWeight: 700,
                 letterSpacing: "0.18em",
                 color: accent,
-                fontFamily:
-                  "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                fontFamily: resolveFontFamily("mono", "mono", customFonts),
+                textAlign: align,
               }}
             >
               {discountCode}
@@ -216,26 +296,58 @@ function renderBlock(
           </div>
         </div>
       );
+    }
 
     case "button": {
       const href = applyTemplateVars(block.href, vars);
+      const align = block.style?.align ?? "center";
+      const bg = isHexColor(block.style?.backgroundColor)
+        ? block.style!.backgroundColor!.trim()
+        : accent;
+      const radius = Math.min(
+        28,
+        Math.max(0, Math.round(block.style?.borderRadius ?? 10)),
+      );
+      const padY = Math.min(
+        24,
+        Math.max(8, Math.round(block.style?.paddingY ?? 12)),
+      );
+      const padX = Math.min(
+        48,
+        Math.max(12, Math.round(block.style?.paddingX ?? 22)),
+      );
+      const textCss = textStyleToCss(
+        block.style,
+        {
+          fontFamily: "sans",
+          fontSize: 14,
+          fontWeight: 600,
+          align: "center",
+          color: "#fbf6ee",
+        },
+        customFonts,
+      );
+      const fullWidth = Boolean(block.style?.fullWidth);
       return (
         <div
           key={block.id}
-          style={{ padding: "8px 32px 20px", textAlign: "center" as const }}
+          style={{ padding: "8px 32px 20px", textAlign: align }}
         >
           <a
             href={href || "#"}
             style={{
-              display: "inline-block",
-              backgroundColor: accent,
-              color: "#fbf6ee",
+              display: fullWidth ? "block" : "inline-block",
+              width: fullWidth ? "100%" : undefined,
+              boxSizing: "border-box",
+              backgroundColor: bg,
+              color: textCss.color,
               textDecoration: "none",
-              fontFamily: sans,
-              fontSize: 14,
-              fontWeight: 600,
-              padding: "12px 22px",
-              borderRadius: 10,
+              fontFamily: textCss.fontFamily,
+              fontSize: textCss.fontSize,
+              fontWeight: textCss.fontWeight,
+              padding: `${padY}px ${padX}px`,
+              borderRadius: radius,
+              textAlign: "center",
             }}
           >
             {applyTemplateVars(block.label, vars)}
@@ -248,45 +360,63 @@ function renderBlock(
       return (
         <div
           key={block.id}
-          style={{ height: Math.min(120, Math.max(8, block.height)) }}
+          style={{ height: Math.min(160, Math.max(8, block.height)) }}
         />
       );
 
-    case "divider":
+    case "divider": {
+      const thickness = Math.min(
+        8,
+        Math.max(1, Math.round(block.style?.thickness ?? 1)),
+      );
+      const inset = Math.min(
+        64,
+        Math.max(0, Math.round(block.style?.inset ?? 32)),
+      );
+      const color = isHexColor(block.style?.color)
+        ? block.style!.color!.trim()
+        : base.border;
       return (
-        <div key={block.id} style={{ padding: "8px 32px" }}>
+        <div key={block.id} style={{ padding: `8px ${inset}px` }}>
           <hr
             style={{
               border: 0,
-              borderTop: `1px solid ${base.border}`,
+              borderTop: `${thickness}px solid ${color}`,
               margin: 0,
             }}
           />
         </div>
       );
+    }
 
-    case "footer":
+    case "footer": {
+      const css = textStyleToCss(
+        block.style,
+        {
+          fontFamily: "sans",
+          fontSize: 12,
+          fontWeight: 400,
+          align: "center",
+          color: base.muted,
+          lineHeight: 1.5,
+        },
+        customFonts,
+      );
       return (
         <div
           key={block.id}
           style={{
             padding: "16px 32px 24px",
             borderTop: `1px solid ${base.border}`,
-            textAlign: "center" as const,
+            textAlign: css.textAlign,
           }}
         >
-          <p
-            style={{
-              margin: 0,
-              fontSize: 12,
-              color: base.muted,
-              fontFamily: sans,
-            }}
-          >
+          <p style={{ margin: 0, ...css }}>
             {renderEmailMarkdown(block.text, vars, accent)}
           </p>
         </div>
       );
+    }
 
     default:
       return null;
@@ -298,20 +428,23 @@ export function LeadWelcomeEmail({
   discountCode,
   template,
   editUrl = "",
+  customFonts = [],
 }: LeadWelcomeEmailProps) {
   const accent = template.accentColor || "#6f2c3f";
   const vars: TemplateVars = { name, editUrl };
-  const ctx = { vars, discountCode, accent };
+  const ctx = { vars, discountCode, accent, customFonts };
+  const fontFaceCss = buildFontFaceCss(customFonts);
 
   return (
     <div
       style={{
         backgroundColor: base.cream,
-        fontFamily: 'Georgia, "Times New Roman", Times, serif',
+        fontFamily: resolveFontFamily("serif", "serif", customFonts),
         color: base.charcoal,
         padding: "32px 16px",
       }}
     >
+      {fontFaceCss ? <style dangerouslySetInnerHTML={{ __html: fontFaceCss }} /> : null}
       <div
         style={{
           maxWidth: 520,

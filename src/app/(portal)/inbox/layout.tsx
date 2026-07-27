@@ -2,6 +2,7 @@ import { requirePermission } from "@/lib/guard";
 import { listConversations } from "@/lib/data/repo";
 import { ConversationList } from "@/components/inbox/conversation-list";
 import { InboxAutoRefresh } from "@/components/inbox/inbox-auto-refresh";
+import { InboxPane } from "@/components/inbox/inbox-pane";
 
 export default async function InboxLayout({
   children,
@@ -12,10 +13,10 @@ export default async function InboxLayout({
   const conversations = await listConversations();
 
   return (
-    <div className="-m-5 flex h-[calc(100vh-3.5rem)] md:-m-8">
+    <div className="-mx-5 -mb-6 flex h-[calc(100dvh-3.5rem)] md:-mx-8 md:-mb-8">
       <InboxAutoRefresh />
       <ConversationList conversations={conversations} />
-      <div className="min-w-0 flex-1">{children}</div>
+      <InboxPane>{children}</InboxPane>
     </div>
   );
 }

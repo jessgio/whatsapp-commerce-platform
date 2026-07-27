@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
 import { CityCombobox } from "@/components/leads/city-combobox";
@@ -8,47 +8,62 @@ import {
   COUNTRY_DIAL_CODES,
   DEFAULT_COUNTRY_DIAL,
 } from "@/lib/country-codes";
-
-const TNC =
-  "Dengan mengisi data ini, Anda menyetujui penggunaan data pribadi untuk keperluan CRM dan komunikasi dari Aeris Beauté. Kami berkomitmen menjaga kerahasiaan data Anda dan tidak akan menyalahgunakan informasi yang Anda berikan.";
+import type { FormField, FormPageCopy } from "@/lib/form-templates";
 
 const fieldClass =
   "mt-1.5 w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-merlot focus:ring-2 focus:ring-merlot/20";
 
-export function LeadForm() {
+export function LeadForm({
+  fields,
+  submitLabel = "Kirim",
+}: {
+  fields: FormField[];
+  formPage?: FormPageCopy;
+  submitLabel?: string;
+}) {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [birthDate, setBirthDate] = useState("");
+  const [values, setValues] = useState<Record<string, string | boolean>>({});
   const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_DIAL);
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [city, setCity] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const orderedFields = useMemo(() => fields, [fields]);
+
+  function setValue(key: string, value: string | boolean) {
+    setValues((prev) => ({ ...prev, [key]: value }));
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!acceptTerms) {
+    const termsField = orderedFields.find((f) => f.key === "terms");
+    if (termsField && !acceptTerms) {
       setError("Anda harus menyetujui pernyataan Privasi Data.");
       return;
     }
 
     setSubmitting(true);
     try {
+      const payloadValues: Record<string, unknown> = {
+        ...values,
+        acceptTerms,
+        countryCode,
+      };
       const res = await fetch("/api/public/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name,
-          birthDate,
-          countryCode,
-          phone,
-          email,
-          city: city || undefined,
           acceptTerms,
+          countryCode,
+          values: payloadValues,
+          // Back-compat flat fields for older clients
+          name: values.name,
+          birthDate: values.birthDate,
+          phone: values.phone,
+          email: values.email,
+          city: values.city,
         }),
       });
       const json = (await res.json().catch(() => null)) as
@@ -70,126 +85,227 @@ export function LeadForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="name" className="text-sm font-medium text-foreground">
-          Nama Lengkap
-        </label>
-        <input
-          id="name"
-          name="name"
-          required
-          autoComplete="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className={fieldClass}
-          placeholder="Sesuai kartu identitas"
-        />
-      </div>
+      {orderedFields.map((field) => {
+        if (field.type === "terms") {
+          return (
+            <fieldset
+              key={field.id}
+              className="rounded-lg border border-border bg-surface-muted/60 p-4"
+            >
+              <legend className="px-1 text-sm font-semibold text-foreground">
+                {field.label}
+              </legend>
+              <label className="flex cursor-pointer gap-3 text-sm leading-relaxed text-foreground">
+                <input
+                  type="checkbox"
+                  checked={acceptTerms}
+                  onChange={(e) => setAcceptTerms(e.target.checked)}
+                  className="mt-1 size-4 shrink-0 rounded border-border accent-merlot"
+                  required={field.required}
+                />
+                <span>{field.termsText}</span>
+              </label>
+            </fieldset>
+          );
+        }
 
-      <div>
-        <label htmlFor="birthDate" className="text-sm font-medium text-foreground">
-          Tanggal Lahir
-        </label>
-        <input
-          id="birthDate"
-          name="birthDate"
-          type="date"
-          required
-          value={birthDate}
-          onChange={(e) => setBirthDate(e.target.value)}
-          className={fieldClass}
-        />
-      </div>
+        if (field.type === "phone") {
+          return (
+            <div key={field.id}>
+              <label
+                htmlFor={field.id}
+                className="text-sm font-medium text-foreground"
+              >
+                {field.label}
+              </label>
+              <div className="mt-1.5 flex gap-2">
+                <label htmlFor={`${field.id}-cc`} className="sr-only">
+                  Kode negara
+                </label>
+                <select
+                  id={`${field.id}-cc`}
+                  name="countryCode"
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="w-[9.5rem] shrink-0 rounded-lg border border-border bg-surface px-2.5 py-2.5 text-sm text-foreground outline-none transition focus:border-merlot focus:ring-2 focus:ring-merlot/20 sm:w-44"
+                >
+                  {COUNTRY_DIAL_CODES.map((c) => (
+                    <option key={`${c.iso}-${c.dial}`} value={c.dial}>
+                      {c.iso} +{c.dial}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  id={field.id}
+                  name={field.key}
+                  type="tel"
+                  required={field.required}
+                  autoComplete="tel-national"
+                  inputMode="numeric"
+                  value={String(values[field.key] ?? "")}
+                  onChange={(e) => setValue(field.key, e.target.value)}
+                  className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-merlot focus:ring-2 focus:ring-merlot/20"
+                  placeholder={
+                    field.placeholder ||
+                    (countryCode === "62" ? "812xxxxxxxx" : "Nomor tanpa kode negara")
+                  }
+                />
+              </div>
+              {field.helpText ? (
+                <p className="mt-1 text-xs text-muted">{field.helpText}</p>
+              ) : null}
+            </div>
+          );
+        }
 
-      <div>
-        <label htmlFor="phone" className="text-sm font-medium text-foreground">
-          Nomor Telepon
-        </label>
-        <div className="mt-1.5 flex gap-2">
-          <label htmlFor="countryCode" className="sr-only">
-            Kode negara
-          </label>
-          <select
-            id="countryCode"
-            name="countryCode"
-            value={countryCode}
-            onChange={(e) => setCountryCode(e.target.value)}
-            className="w-[9.5rem] shrink-0 rounded-lg border border-border bg-surface px-2.5 py-2.5 text-sm text-foreground outline-none transition focus:border-merlot focus:ring-2 focus:ring-merlot/20 sm:w-44"
-          >
-            {COUNTRY_DIAL_CODES.map((c) => (
-              <option key={`${c.iso}-${c.dial}`} value={c.dial}>
-                {c.iso} +{c.dial}
-              </option>
-            ))}
-          </select>
-          <input
-            id="phone"
-            name="phone"
-            type="tel"
-            required
-            autoComplete="tel-national"
-            inputMode="numeric"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-merlot focus:ring-2 focus:ring-merlot/20"
-            placeholder={countryCode === "62" ? "812xxxxxxxx" : "Nomor tanpa kode negara"}
-          />
-        </div>
-        <p className="mt-1 text-xs text-muted">
-          Pilih kode negara, lalu isi nomor tanpa + atau kode negara.
-        </p>
-      </div>
+        if (field.type === "city") {
+          return (
+            <div key={field.id}>
+              <label
+                htmlFor={field.id}
+                className="text-sm font-medium text-foreground"
+              >
+                {field.label}{" "}
+                {!field.required ? (
+                  <span className="font-normal text-muted">(Opsional)</span>
+                ) : null}
+              </label>
+              <CityCombobox
+                id={field.id}
+                value={String(values[field.key] ?? "")}
+                onChange={(v) => setValue(field.key, v)}
+              />
+            </div>
+          );
+        }
 
-      <div>
-        <label htmlFor="email" className="text-sm font-medium text-foreground">
-          Alamat Email
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          required
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={fieldClass}
-          placeholder="nama@email.com"
-        />
-      </div>
+        if (field.type === "checkbox") {
+          return (
+            <label
+              key={field.id}
+              className="flex cursor-pointer gap-3 text-sm leading-relaxed text-foreground"
+            >
+              <input
+                type="checkbox"
+                checked={Boolean(values[field.key])}
+                onChange={(e) => setValue(field.key, e.target.checked)}
+                className="mt-1 size-4 shrink-0 rounded border-border accent-merlot"
+                required={field.required}
+              />
+              <span>{field.helpText || field.label}</span>
+            </label>
+          );
+        }
 
-      <div>
-        <label htmlFor="city" className="text-sm font-medium text-foreground">
-          Kota Domisili{" "}
-          <span className="font-normal text-muted">(Opsional)</span>
-        </label>
-        <CityCombobox id="city" value={city} onChange={setCity} />
-      </div>
+        if (field.type === "select") {
+          return (
+            <div key={field.id}>
+              <label
+                htmlFor={field.id}
+                className="text-sm font-medium text-foreground"
+              >
+                {field.label}
+                {!field.required ? (
+                  <span className="font-normal text-muted"> (Opsional)</span>
+                ) : null}
+              </label>
+              <select
+                id={field.id}
+                name={field.key}
+                required={field.required}
+                value={String(values[field.key] ?? "")}
+                onChange={(e) => setValue(field.key, e.target.value)}
+                className={fieldClass}
+              >
+                <option value="">Pilih…</option>
+                {(field.options ?? []).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          );
+        }
 
-      <fieldset className="rounded-lg border border-border bg-surface-muted/60 p-4">
-        <legend className="px-1 text-sm font-semibold text-foreground">
-          Privasi Data
-        </legend>
+        if (field.type === "textarea") {
+          return (
+            <div key={field.id}>
+              <label
+                htmlFor={field.id}
+                className="text-sm font-medium text-foreground"
+              >
+                {field.label}
+                {!field.required ? (
+                  <span className="font-normal text-muted"> (Opsional)</span>
+                ) : null}
+              </label>
+              <textarea
+                id={field.id}
+                name={field.key}
+                required={field.required}
+                value={String(values[field.key] ?? "")}
+                onChange={(e) => setValue(field.key, e.target.value)}
+                className={`${fieldClass} min-h-[88px] resize-y`}
+                placeholder={field.placeholder}
+              />
+            </div>
+          );
+        }
 
-        <label className="flex cursor-pointer gap-3 text-sm leading-relaxed text-foreground">
-          <input
-            type="checkbox"
-            checked={acceptTerms}
-            onChange={(e) => setAcceptTerms(e.target.checked)}
-            className="mt-1 size-4 shrink-0 rounded border-border accent-merlot"
-            required
-          />
-          <span>{TNC}</span>
-        </label>
-      </fieldset>
+        const inputType =
+          field.type === "date"
+            ? "date"
+            : field.type === "email"
+              ? "email"
+              : "text";
+
+        return (
+          <div key={field.id}>
+            <label
+              htmlFor={field.id}
+              className="text-sm font-medium text-foreground"
+            >
+              {field.label}
+              {!field.required ? (
+                <span className="font-normal text-muted"> (Opsional)</span>
+              ) : null}
+            </label>
+            <input
+              id={field.id}
+              name={field.key}
+              type={inputType}
+              required={field.required}
+              autoComplete={
+                field.key === "name"
+                  ? "name"
+                  : field.key === "email"
+                    ? "email"
+                    : undefined
+              }
+              value={String(values[field.key] ?? "")}
+              onChange={(e) => setValue(field.key, e.target.value)}
+              className={fieldClass}
+              placeholder={field.placeholder}
+            />
+            {field.helpText ? (
+              <p className="mt-1 text-xs text-muted">{field.helpText}</p>
+            ) : null}
+          </div>
+        );
+      })}
 
       {error && (
-        <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">
+        <p
+          className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger"
+          role="alert"
+        >
           {error}
         </p>
       )}
 
       <Button type="submit" disabled={submitting} className="w-full py-2.5">
-        {submitting ? "Mengirim…" : "Kirim"}
+        {submitting ? "Mengirim…" : submitLabel}
       </Button>
     </form>
   );

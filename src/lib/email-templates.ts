@@ -7,8 +7,13 @@ import {
 
 export const LEAD_WELCOME_TEMPLATE_ID = "lead_welcome";
 
+export type EmailTemplateKind = "system" | "campaign";
+
 export type EmailTemplate = {
   id: string;
+  name: string;
+  description: string | null;
+  kind: EmailTemplateKind;
   subject: string;
   accentColor: string;
   blocks: EmailBlock[];
@@ -27,6 +32,9 @@ export type EmailTemplate = {
 
 export const DEFAULT_LEAD_WELCOME_TEMPLATE: EmailTemplate = {
   id: LEAD_WELCOME_TEMPLATE_ID,
+  name: "Lead welcome",
+  description: "Sent automatically to new joiners from the QR lead form.",
+  kind: "system",
   subject: "Halo {name} — kode diskon Aeris Beauté",
   accentColor: "#6f2c3f",
   blocks: DEFAULT_LEAD_WELCOME_BLOCKS,
@@ -52,11 +60,35 @@ export function applyTemplateVars(
     .replaceAll("{edit_url}", editUrl);
 }
 
+export function newEmailTemplateId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `email-${Date.now().toString(36)}`;
+}
+
+export function emptyCampaignEmailTemplate(
+  partial?: Partial<EmailTemplate>,
+): EmailTemplate {
+  const now = new Date().toISOString();
+  return {
+    id: partial?.id ?? newEmailTemplateId(),
+    name: partial?.name ?? "Untitled email",
+    description: partial?.description ?? null,
+    kind: "campaign",
+    subject: partial?.subject ?? "Halo {name} — Aeris Beauté",
+    accentColor: partial?.accentColor ?? "#6f2c3f",
+    blocks: partial?.blocks
+      ? [...partial.blocks]
+      : [...DEFAULT_LEAD_WELCOME_BLOCKS],
+    updatedAt: partial?.updatedAt ?? now,
+  };
+}
+
 export function mapEmailTemplate(r: Record<string, unknown>): EmailTemplate {
   const rawBlocks = r.blocks;
   let blocks = parseEmailBlocks(rawBlocks);
 
-  // Older rows: empty blocks array but flat fields populated
   const hasLegacyCopy =
     Boolean(r.greeting_template) ||
     Boolean(r.intro_text) ||
@@ -78,8 +110,19 @@ export function mapEmailTemplate(r: Record<string, unknown>): EmailTemplate {
     });
   }
 
+  const id = String(r.id);
+  const kind: EmailTemplateKind =
+    r.kind === "system" || id === LEAD_WELCOME_TEMPLATE_ID
+      ? "system"
+      : "campaign";
+
   return {
-    id: String(r.id),
+    id,
+    name:
+      String(r.name ?? "").trim() ||
+      (id === LEAD_WELCOME_TEMPLATE_ID ? "Lead welcome" : id),
+    description: (r.description as string | null) ?? null,
+    kind,
     subject: String(r.subject ?? ""),
     accentColor: String(r.accent_color ?? "#6f2c3f"),
     blocks,

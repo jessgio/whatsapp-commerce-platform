@@ -46,8 +46,8 @@ export default async function OrderDetailPage({
 
       {order.status !== "cancelled" && (
         <Card>
-          <CardBody>
-            <div className="flex items-center justify-between">
+          <CardBody className="overflow-x-auto">
+            <div className="flex min-w-[28rem] items-center justify-between sm:min-w-0">
               {STEPS.map((s, i) => (
                 <div key={s} className="flex flex-1 items-center last:flex-none">
                   <div className="flex flex-col items-center">
@@ -59,7 +59,7 @@ export default async function OrderDetailPage({
                     >
                       {i + 1}
                     </div>
-                    <span className="mt-1 text-[11px] capitalize text-muted">{s}</span>
+                    <span className="mt-1 text-[10px] capitalize text-muted sm:text-[11px]">{s}</span>
                   </div>
                   {i < STEPS.length - 1 && (
                     <div className={cn("mx-1 h-0.5 flex-1", i < currentStep ? "bg-merlot" : "bg-beige-200")} />
@@ -82,29 +82,45 @@ export default async function OrderDetailPage({
         <Card className="lg:col-span-2">
           <CardHeader><CardTitle>Items</CardTitle></CardHeader>
           <CardBody className="pt-0">
-            <Table>
-              <thead>
-                <tr>
-                  <Th>Product</Th>
-                  <Th className="text-right">Qty</Th>
-                  <Th className="text-right">Unit</Th>
-                  <Th className="text-right">Subtotal</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {order.items.map((it) => (
-                  <tr key={it.productId}>
-                    <Td>
-                      <div className="text-sm font-medium text-foreground">{it.name}</div>
-                      <div className="font-mono text-xs text-muted">{it.sku}</div>
-                    </Td>
-                    <Td className="text-right text-sm">{it.qty}</Td>
-                    <Td className="text-right text-sm">{formatIDR(it.unitPrice)}</Td>
-                    <Td className="text-right text-sm font-medium">{formatIDR(it.qty * it.unitPrice)}</Td>
+            <div className="space-y-3 sm:hidden">
+              {order.items.map((it) => (
+                <div key={it.productId} className="rounded-lg border border-border/60 p-3">
+                  <div className="text-sm font-medium text-foreground">{it.name}</div>
+                  <div className="font-mono text-xs text-muted">{it.sku}</div>
+                  <div className="mt-2 flex justify-between text-sm text-muted">
+                    <span>
+                      {it.qty} × {formatIDR(it.unitPrice)}
+                    </span>
+                    <span className="font-medium text-foreground">{formatIDR(it.qty * it.unitPrice)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden sm:block">
+              <Table>
+                <thead>
+                  <tr>
+                    <Th>Product</Th>
+                    <Th className="text-right">Qty</Th>
+                    <Th className="text-right">Unit</Th>
+                    <Th className="text-right">Subtotal</Th>
                   </tr>
-                ))}
-              </tbody>
-            </Table>
+                </thead>
+                <tbody>
+                  {order.items.map((it) => (
+                    <tr key={it.productId}>
+                      <Td>
+                        <div className="text-sm font-medium text-foreground">{it.name}</div>
+                        <div className="font-mono text-xs text-muted">{it.sku}</div>
+                      </Td>
+                      <Td className="text-right text-sm">{it.qty}</Td>
+                      <Td className="text-right text-sm">{formatIDR(it.unitPrice)}</Td>
+                      <Td className="text-right text-sm font-medium">{formatIDR(it.qty * it.unitPrice)}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
             <div className="mt-4 ml-auto w-full max-w-xs space-y-1.5 text-sm">
               <Row label="Subtotal" value={formatIDR(order.subtotal)} />
               <Row label="Shipping" value={formatIDR(order.shippingCost)} />

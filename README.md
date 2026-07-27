@@ -46,10 +46,21 @@ Copy `.env.example` → `.env.local` and fill in credentials to go live.
    - Shipping: `/api/webhooks/shipping`
 7. Deploy to Vercel.
 
+## Mobile field app (Expo Go)
+
+Phone-friendly portal inbox/orders (responsive web), plus an Expo Go app in [`mobile/`](mobile/) for CS/sales in the field. The app calls authenticated `/api/staff/*` routes. See [`mobile/README.md`](mobile/README.md).
+
+```bash
+# Local Expo demo auth (optional): STAFF_API_ALLOW_DEMO=true
+npm run dev          # portal + staff API
+npm run mobile       # Expo Go (from repo root)
+node scripts/smoke-staff-api.mjs   # API smoke (needs STAFF_API_ALLOW_DEMO or demo mode)
+```
+
 ## Modules
 
 - **CRM** — customers keyed off `wa_id`, consent ledger, saved addresses (reused per order), segments, profiles.
-- **Inbox** — live WhatsApp conversations, assignment, 24h-window indicator, reply composer.
+- **Inbox** — live WhatsApp conversations, assignment, 24h-window indicator, reply composer (mobile list↔thread).
 - **Catalog & Pricing** — SKUs, prices, discounts, push to WhatsApp catalog.
 - **Orders (OMS)** — WA-cart & agent orders, lifecycle, payment links, issue flags, warehouse notices.
 - **Warehouse (WMS)** — fulfillment queue, stock health, notices.

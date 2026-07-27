@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DEMO_CUSTOMERS } from "@/lib/demo/data";
+import { getActiveFormTemplate } from "@/lib/data/form-templates";
 import { sendLeadWelcomeEmail } from "@/lib/email";
 import { isSupabaseConfigured } from "@/lib/env";
 import { newEditToken } from "@/lib/lead-edit";
-import { LEAD_DISCOUNT_CODE } from "@/lib/lead-offer";
-import { resolveCanonicalCity } from "@/lib/cities";
-import { parseLeadFields } from "@/lib/lead-validation";
+import { resolveLeadDiscountCode } from "@/lib/lead-offer";
+import { parseLeadSubmission } from "@/lib/lead-form-submit";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import type { Customer } from "@/lib/types";
 
@@ -21,6 +21,7 @@ type LeadBody = {
   email?: string;
   city?: string;
   acceptTerms?: boolean;
+  values?: Record<string, unknown>;
 };
 
 function upsertDemoLead(data: {
@@ -30,6 +31,7 @@ function upsertDemoLead(data: {
   city: string | null;
   waId: string;
   phone: string;
+  formAnswers: Record<string, string | boolean>;
 }) {
   const now = new Date().toISOString();
   const emailLower = data.email.toLowerCase();
@@ -42,7 +44,9 @@ function upsertDemoLead(data: {
 
   if (existingIdx >= 0) {
     const prev = DEMO_CUSTOMERS[existingIdx];
-    const tags = prev.tags.includes("qr_lead") ? prev.tags : [...prev.tags, "qr_lead"];
+    const tags = prev.tags.includes("qr_lead")
+      ? prev.tags
+      : [...prev.tags, "qr_lead"];
     const editToken = prev.editToken || newEditToken();
     DEMO_CUSTOMERS[existingIdx] = {
       ...prev,
@@ -51,13 +55,14 @@ function upsertDemoLead(data: {
       waId: data.waId,
       email: data.email,
       city: data.city,
-      birthDate: data.birthDate,
+      birthDate: data.birthDate || null,
       consentStatus: "opted_in",
       consentChannel: "web_form",
       termsAcceptedAt: now,
       termsVersion: TERMS_VERSION,
       tags,
       editToken,
+      formAnswers: data.formAnswers,
     };
     return { id: prev.id, created: false, editToken };
   }
@@ -70,7 +75,7 @@ function upsertDemoLead(data: {
     phone: data.phone,
     email: data.email,
     city: data.city,
-    birthDate: data.birthDate,
+    birthDate: data.birthDate || null,
     consentStatus: "opted_in",
     consentChannel: "web_form",
     segments: ["New"],
@@ -82,6 +87,7 @@ function upsertDemoLead(data: {
     termsAcceptedAt: now,
     termsVersion: TERMS_VERSION,
     editToken,
+    formAnswers: data.formAnswers,
     createdAt: now,
   };
   DEMO_CUSTOMERS.unshift(customer);
@@ -91,37 +97,44 @@ function upsertDemoLead(data: {
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as LeadBody | null;
   if (!body) {
-    return NextResponse.json({ ok: false, error: "Permintaan tidak valid." }, { status: 400 });
-  }
-
-  if (!body.acceptTerms) {
     return NextResponse.json(
-      { ok: false, error: "Anda harus menyetujui pernyataan Privasi Data." },
+      { ok: false, error: "Permintaan tidak valid." },
       { status: 400 },
     );
   }
 
-  const parsed = parseLeadFields(body);
+  const template = await getActiveFormTemplate();
+  const discountCode = resolveLeadDiscountCode(template.discountCode);
+
+  const values: Record<string, unknown> = {
+    ...(body.values ?? {}),
+    name: body.values?.name ?? body.name,
+    birthDate: body.values?.birthDate ?? body.birthDate,
+    phone: body.values?.phone ?? body.phone,
+    email: body.values?.email ?? body.email,
+    city: body.values?.city ?? body.city,
+    countryCode: body.values?.countryCode ?? body.countryCode,
+    acceptTerms: body.acceptTerms ?? body.values?.acceptTerms,
+  };
+
+  const parsed = await parseLeadSubmission(template.fields, values, {
+    countryCode: String(values.countryCode ?? ""),
+  });
   if ("error" in parsed) {
     return NextResponse.json({ ok: false, error: parsed.error }, { status: 400 });
   }
+  const { lead, formAnswers } = parsed.data;
 
-  const cityResolved = await resolveCanonicalCity(parsed.data.city);
-  if ("error" in cityResolved) {
-    return NextResponse.json({ ok: false, error: cityResolved.error }, { status: 400 });
-  }
-
-  const data = { ...parsed.data, city: cityResolved.city };
   const now = new Date().toISOString();
 
   if (!isSupabaseConfigured()) {
-    const result = upsertDemoLead(data);
+    const result = upsertDemoLead({ ...lead, formAnswers });
     try {
       await sendLeadWelcomeEmail({
-        to: data.email,
-        name: data.name,
+        to: lead.email,
+        name: lead.name,
         editToken: result.editToken,
-        discountCode: LEAD_DISCOUNT_CODE,
+        discountCode,
       });
     } catch (e) {
       console.error("[leads] welcome email failed (non-blocking)", e);
@@ -133,8 +146,8 @@ export async function POST(req: NextRequest) {
 
   const { data: byWa } = await supabase
     .from("customers")
-    .select("id, tags, edit_token")
-    .eq("wa_id", data.waId)
+    .select("id, tags, edit_token, form_answers")
+    .eq("wa_id", lead.waId)
     .maybeSingle();
 
   let existing = byWa;
@@ -142,8 +155,8 @@ export async function POST(req: NextRequest) {
   if (!existing) {
     const { data: byPhone } = await supabase
       .from("customers")
-      .select("id, tags, edit_token")
-      .eq("phone", data.phone)
+      .select("id, tags, edit_token, form_answers")
+      .eq("phone", lead.phone)
       .maybeSingle();
     existing = byPhone;
   }
@@ -151,8 +164,8 @@ export async function POST(req: NextRequest) {
   if (!existing) {
     const { data: byEmail } = await supabase
       .from("customers")
-      .select("id, tags, edit_token")
-      .ilike("email", data.email)
+      .select("id, tags, edit_token, form_answers")
+      .ilike("email", lead.email)
       .maybeSingle();
     existing = byEmail;
   }
@@ -160,18 +173,26 @@ export async function POST(req: NextRequest) {
   const editToken =
     (existing?.edit_token as string | null | undefined) || newEditToken();
 
+  const prevAnswers =
+    existing?.form_answers &&
+    typeof existing.form_answers === "object" &&
+    !Array.isArray(existing.form_answers)
+      ? (existing.form_answers as Record<string, unknown>)
+      : {};
+
   const payload = {
-    name: data.name,
-    phone: data.phone,
-    wa_id: data.waId,
-    email: data.email,
-    city: data.city,
-    birth_date: data.birthDate,
+    name: lead.name,
+    phone: lead.phone,
+    wa_id: lead.waId,
+    email: lead.email,
+    city: lead.city,
+    birth_date: lead.birthDate || null,
     consent_status: "opted_in" as const,
     consent_channel: "web_form",
     terms_accepted_at: now,
     terms_version: TERMS_VERSION,
     edit_token: editToken,
+    form_answers: { ...prevAnswers, ...formAnswers },
   };
 
   let customerId: string;
@@ -183,7 +204,7 @@ export async function POST(req: NextRequest) {
     const { data: waOwner } = await supabase
       .from("customers")
       .select("id")
-      .eq("wa_id", data.waId)
+      .eq("wa_id", lead.waId)
       .maybeSingle();
     const updateRow =
       waOwner && waOwner.id !== existing.id
@@ -198,6 +219,7 @@ export async function POST(req: NextRequest) {
             terms_accepted_at: payload.terms_accepted_at,
             terms_version: payload.terms_version,
             edit_token: editToken,
+            form_answers: payload.form_answers,
             tags,
           }
         : { ...payload, tags };
@@ -253,10 +275,10 @@ export async function POST(req: NextRequest) {
 
   try {
     await sendLeadWelcomeEmail({
-      to: data.email,
-      name: data.name,
+      to: lead.email,
+      name: lead.name,
       editToken,
-      discountCode: LEAD_DISCOUNT_CODE,
+      discountCode,
     });
   } catch (e) {
     console.error("[leads] welcome email failed (non-blocking)", e);

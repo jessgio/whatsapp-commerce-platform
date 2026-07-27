@@ -1,3 +1,10 @@
+import type {
+  EmailButtonStyle,
+  EmailDividerStyle,
+  EmailImageStyle,
+  EmailTextStyle,
+} from "@/lib/email-style";
+
 export type EmailBlockType =
   | "header"
   | "image"
@@ -18,6 +25,7 @@ export type HeaderBlock = BlockBase & {
   showMark: boolean;
   /** Uploaded brand logo URL (preferred over the letter mark) */
   logoUrl?: string;
+  style?: EmailTextStyle;
 };
 
 export type ImageBlock = BlockBase & {
@@ -26,27 +34,32 @@ export type ImageBlock = BlockBase & {
   alt: string;
   /** Optional click-through URL for the image */
   href?: string;
+  style?: EmailImageStyle;
 };
 
 export type HeadingBlock = BlockBase & {
   type: "heading";
   text: string; // supports {name}
+  style?: EmailTextStyle;
 };
 
 export type TextBlock = BlockBase & {
   type: "text";
   text: string; // supports {name}
+  style?: EmailTextStyle;
 };
 
 export type DiscountBlock = BlockBase & {
   type: "discount";
   label: string;
+  style?: EmailTextStyle;
 };
 
 export type ButtonBlock = BlockBase & {
   type: "button";
   label: string;
   href: string;
+  style?: EmailButtonStyle;
 };
 
 export type SpacerBlock = BlockBase & {
@@ -56,11 +69,13 @@ export type SpacerBlock = BlockBase & {
 
 export type DividerBlock = BlockBase & {
   type: "divider";
+  style?: EmailDividerStyle;
 };
 
 export type FooterBlock = BlockBase & {
   type: "footer";
   text: string;
+  style?: EmailTextStyle;
 };
 
 export type EmailBlock =
@@ -82,32 +97,94 @@ export function createBlock(type: EmailBlockType): EmailBlock {
   const id = newBlockId();
   switch (type) {
     case "header":
-      return { id, type, brandName: "Aeris Beauté", showMark: true, logoUrl: "" };
+      return {
+        id,
+        type,
+        brandName: "Aeris Beauté",
+        showMark: true,
+        logoUrl: "",
+        style: { align: "center", fontFamily: "sans", fontSize: 18, fontWeight: 600 },
+      };
     case "image":
-      return { id, type, src: "", alt: "Banner", href: "" };
+      return {
+        id,
+        type,
+        src: "",
+        alt: "Banner",
+        href: "",
+        style: { align: "center", widthPercent: 100, borderRadius: 0 },
+      };
     case "heading":
-      return { id, type, text: "Hello, {name}" };
+      return {
+        id,
+        type,
+        text: "Hello, {name}",
+        style: {
+          fontFamily: "serif",
+          fontSize: 24,
+          fontWeight: 600,
+          align: "left",
+          lineHeight: 1.3,
+        },
+      };
     case "text":
       return {
         id,
         type,
         text: "Terima kasih sudah bergabung bersama Aeris Beauté.",
+        style: {
+          fontFamily: "sans",
+          fontSize: 16,
+          fontWeight: 400,
+          align: "left",
+          lineHeight: 1.6,
+        },
       };
     case "discount":
-      return { id, type, label: "Kode diskon Anda" };
+      return {
+        id,
+        type,
+        label: "Kode diskon Anda",
+        style: { align: "center", fontFamily: "sans" },
+      };
     case "button":
       return {
         id,
         type,
         label: "Belanja sekarang",
         href: "https://aerisbeaute.com",
+        style: {
+          align: "center",
+          fontFamily: "sans",
+          fontSize: 14,
+          fontWeight: 600,
+          borderRadius: 10,
+          fullWidth: false,
+          paddingY: 12,
+          paddingX: 22,
+        },
       };
     case "spacer":
       return { id, type, height: 24 };
     case "divider":
-      return { id, type };
+      return {
+        id,
+        type,
+        style: { thickness: 1, inset: 32 },
+      };
     case "footer":
-      return { id, type, text: "© Aeris Beauté" };
+      return {
+        id,
+        type,
+        text: "© Aeris Beauté",
+        style: {
+          fontFamily: "sans",
+          fontSize: 12,
+          fontWeight: 400,
+          align: "center",
+          lineHeight: 1.5,
+        },
+      };
   }
 }
 
@@ -118,30 +195,81 @@ export const DEFAULT_LEAD_WELCOME_BLOCKS: EmailBlock[] = [
     brandName: "Aeris Beauté",
     showMark: true,
     logoUrl: "",
+    style: { align: "center", fontFamily: "sans", fontSize: 18, fontWeight: 600 },
   },
-  { id: "b_heading", type: "heading", text: "Hello, {name}" },
+  {
+    id: "b_heading",
+    type: "heading",
+    text: "Hello, {name}",
+    style: {
+      fontFamily: "serif",
+      fontSize: 24,
+      fontWeight: 600,
+      align: "left",
+      lineHeight: 1.3,
+    },
+  },
   {
     id: "b_intro",
     type: "text",
     text: "Terima kasih sudah bergabung bersama Aeris Beauté. Kami senang menyambut Anda.",
+    style: {
+      fontFamily: "sans",
+      fontSize: 16,
+      align: "left",
+      lineHeight: 1.6,
+    },
   },
   {
     id: "b_body",
     type: "text",
     text: "Sebagai apresiasi, berikut kode diskon spesial untuk Anda:",
+    style: {
+      fontFamily: "sans",
+      fontSize: 16,
+      align: "left",
+      lineHeight: 1.6,
+    },
   },
-  { id: "b_discount", type: "discount", label: "Kode diskon Anda" },
+  {
+    id: "b_discount",
+    type: "discount",
+    label: "Kode diskon Anda",
+    style: { align: "center", fontFamily: "sans" },
+  },
   {
     id: "b_closing",
     type: "text",
     text: "Simpan email ini agar kode tetap mudah ditemukan. Sampai jumpa di pembelian berikutnya.",
+    style: {
+      fontFamily: "sans",
+      fontSize: 16,
+      align: "left",
+      lineHeight: 1.6,
+    },
   },
   {
     id: "b_edit",
     type: "text",
     text: "Salah ketik data Anda? [Perbarui informasi di sini]({edit_url}) — tanpa menerima kode diskon lagi.",
+    style: {
+      fontFamily: "sans",
+      fontSize: 14,
+      align: "left",
+      lineHeight: 1.6,
+    },
   },
-  { id: "b_footer", type: "footer", text: "© Aeris Beauté" },
+  {
+    id: "b_footer",
+    type: "footer",
+    text: "© Aeris Beauté",
+    style: {
+      fontFamily: "sans",
+      fontSize: 12,
+      align: "center",
+      lineHeight: 1.5,
+    },
+  },
 ];
 
 export const BLOCK_LABELS: Record<EmailBlockType, string> = {
@@ -201,6 +329,7 @@ export function legacyFieldsToBlocks(input: {
       src: input.bannerUrl,
       alt: "Banner",
       href: "",
+      style: { align: "center", widthPercent: 100 },
     });
   }
   blocks.push({
@@ -209,32 +338,57 @@ export function legacyFieldsToBlocks(input: {
     brandName: input.brandName || "Aeris Beauté",
     showMark: true,
     logoUrl: "",
+    style: { align: "center", fontFamily: "sans", fontSize: 18, fontWeight: 600 },
   });
   blocks.push({
     id: newBlockId(),
     type: "heading",
     text: input.greetingTemplate || "Hello, {name}",
+    style: {
+      fontFamily: "serif",
+      fontSize: 24,
+      fontWeight: 600,
+      align: "left",
+      lineHeight: 1.3,
+    },
   });
   if (input.introText.trim()) {
-    blocks.push({ id: newBlockId(), type: "text", text: input.introText });
+    blocks.push({
+      id: newBlockId(),
+      type: "text",
+      text: input.introText,
+      style: { fontFamily: "sans", fontSize: 16, align: "left", lineHeight: 1.6 },
+    });
   }
   if (input.bodyText.trim()) {
-    blocks.push({ id: newBlockId(), type: "text", text: input.bodyText });
+    blocks.push({
+      id: newBlockId(),
+      type: "text",
+      text: input.bodyText,
+      style: { fontFamily: "sans", fontSize: 16, align: "left", lineHeight: 1.6 },
+    });
   }
   if (input.showDiscount) {
     blocks.push({
       id: newBlockId(),
       type: "discount",
       label: input.discountLabel || "Kode diskon Anda",
+      style: { align: "center", fontFamily: "sans" },
     });
   }
   if (input.closingText.trim()) {
-    blocks.push({ id: newBlockId(), type: "text", text: input.closingText });
+    blocks.push({
+      id: newBlockId(),
+      type: "text",
+      text: input.closingText,
+      style: { fontFamily: "sans", fontSize: 16, align: "left", lineHeight: 1.6 },
+    });
   }
   blocks.push({
     id: newBlockId(),
     type: "footer",
     text: input.footerText || "© Aeris Beauté",
+    style: { fontFamily: "sans", fontSize: 12, align: "center" },
   });
   return blocks;
 }

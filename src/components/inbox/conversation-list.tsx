@@ -11,6 +11,7 @@ import type { Conversation } from "@/lib/types";
 export function ConversationList({ conversations }: { conversations: Conversation[] }) {
   const pathname = usePathname();
   const [filter, setFilter] = useState<"all" | "open" | "mine" | "unassigned">("all");
+  const conversationSelected = pathname.startsWith("/inbox/") && pathname !== "/inbox";
 
   const filtered = conversations.filter((c) => {
     if (filter === "open") return c.status !== "resolved";
@@ -19,7 +20,12 @@ export function ConversationList({ conversations }: { conversations: Conversatio
   });
 
   return (
-    <div className="flex h-full w-full flex-col border-r border-border bg-surface md:w-80">
+    <div
+      className={cn(
+        "h-full w-full flex-col border-r border-border bg-surface md:flex md:w-80",
+        conversationSelected ? "hidden" : "flex",
+      )}
+    >
       <div className="flex gap-1 border-b border-border p-2">
         {(["all", "open", "unassigned"] as const).map((f) => (
           <button

@@ -1,5 +1,5 @@
 import "server-only";
-import { isSupabaseConfigured } from "@/lib/env";
+import { shouldUseSupabaseData } from "@/lib/data/mode";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   DEMO_ADDRESSES,
@@ -35,7 +35,7 @@ import type {
 /* ---------- Customers ---------- */
 
 export async function listCustomers(): Promise<Customer[]> {
-  if (isSupabaseConfigured()) {
+  if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
     const { data } = await supabase
       .from("customers")
@@ -48,7 +48,7 @@ export async function listCustomers(): Promise<Customer[]> {
 }
 
 export async function getCustomer(id: string): Promise<Customer | null> {
-  if (isSupabaseConfigured()) {
+  if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
     const { data } = await supabase.from("customers").select("*").eq("id", id).single();
     if (data) return mapCustomer(data);
@@ -58,7 +58,7 @@ export async function getCustomer(id: string): Promise<Customer | null> {
 }
 
 export async function getCustomerAddresses(customerId: string): Promise<Address[]> {
-  if (isSupabaseConfigured()) {
+  if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
     const { data } = await supabase.from("addresses").select("*").eq("customer_id", customerId);
     if (data) return data.map(mapAddress);
@@ -69,7 +69,7 @@ export async function getCustomerAddresses(customerId: string): Promise<Address[
 /* ---------- Conversations & messages ---------- */
 
 export async function listConversations(): Promise<Conversation[]> {
-  if (isSupabaseConfigured()) {
+  if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
     const { data } = await supabase
       .from("conversations")
@@ -86,7 +86,7 @@ export async function listConversations(): Promise<Conversation[]> {
 }
 
 export async function getConversation(id: string): Promise<Conversation | null> {
-  if (isSupabaseConfigured()) {
+  if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
     const { data } = await supabase
       .from("conversations")
@@ -102,7 +102,7 @@ export async function getConversation(id: string): Promise<Conversation | null> 
 }
 
 export async function listMessages(conversationId: string): Promise<Message[]> {
-  if (isSupabaseConfigured()) {
+  if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
     const { data } = await supabase
       .from("messages")
@@ -117,7 +117,7 @@ export async function listMessages(conversationId: string): Promise<Message[]> {
 /* ---------- Catalog ---------- */
 
 export async function listProducts(): Promise<Product[]> {
-  if (isSupabaseConfigured()) {
+  if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
     const { data } = await supabase.from("products").select("*").order("name");
     if (data) return data.map(mapProduct);
@@ -128,7 +128,7 @@ export async function listProducts(): Promise<Product[]> {
 /* ---------- Orders ---------- */
 
 export async function listOrders(): Promise<Order[]> {
-  if (isSupabaseConfigured()) {
+  if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
     const { data } = await supabase
       .from("orders")
@@ -145,7 +145,7 @@ export async function listOrders(): Promise<Order[]> {
 }
 
 export async function getOrder(id: string): Promise<Order | null> {
-  if (isSupabaseConfigured()) {
+  if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
     const { data } = await supabase
       .from("orders")
@@ -161,7 +161,7 @@ export async function getOrder(id: string): Promise<Order | null> {
 }
 
 export async function listOrdersForCustomer(customerId: string): Promise<Order[]> {
-  if (isSupabaseConfigured()) {
+  if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
     const { data } = await supabase
       .from("orders")
@@ -247,6 +247,12 @@ function mapCustomer(r: any): Customer {
     lastOrderAt: r.last_order_at,
     termsAcceptedAt: r.terms_accepted_at ?? null,
     termsVersion: r.terms_version ?? null,
+    formAnswers:
+      r.form_answers &&
+      typeof r.form_answers === "object" &&
+      !Array.isArray(r.form_answers)
+        ? r.form_answers
+        : undefined,
     createdAt: r.created_at,
   };
 }

@@ -31,6 +31,8 @@ export interface Customer {
   termsVersion: string | null;
   /** Public profile-edit link token (never shown in CRM UI). */
   editToken?: string | null;
+  /** Custom QR form answers keyed by custom_* field keys. */
+  formAnswers?: Record<string, string | boolean | number | null>;
   createdAt: string;
 }
 

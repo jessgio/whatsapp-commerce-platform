@@ -35,6 +35,7 @@ export type CampaignSaveInput = {
   scheduledAt: string | null;
   waMode: CampaignWaMode | null;
   waDesignId: string | null;
+  emailTemplateId: string | null;
   emailSubject: string | null;
   emailAccentColor: string | null;
   emailBlocks: EmailBlock[] | null;
@@ -82,6 +83,8 @@ export async function saveCampaignAction(
     scheduledAt: input.scheduledAt,
     waMode: input.channel === "whatsapp" ? input.waMode : null,
     waDesignId: input.channel === "whatsapp" ? input.waDesignId : null,
+    emailTemplateId:
+      input.channel === "email" ? input.emailTemplateId : null,
     emailSubject: input.channel === "email" ? input.emailSubject : null,
     emailAccentColor:
       input.channel === "email" ? input.emailAccentColor : null,

@@ -2,8 +2,12 @@ import { render } from "@react-email/render";
 import { Resend } from "resend";
 import { LeadWelcomeEmail } from "@/emails/lead-welcome";
 import type { Campaign } from "@/lib/campaigns";
+import { listEmailFontsAdmin } from "@/lib/data/email-fonts";
 import { DEFAULT_LEAD_WELCOME_BLOCKS } from "@/lib/email-blocks";
-import { applyTemplateVars, type EmailTemplate } from "@/lib/email-templates";
+import {
+  applyTemplateVars,
+  type EmailTemplate,
+} from "@/lib/email-templates";
 import { LEAD_DISCOUNT_CODE } from "@/lib/lead-offer";
 import type { Customer } from "@/lib/types";
 
@@ -26,6 +30,9 @@ function fromAddress(): string {
 function campaignToTemplate(campaign: Campaign): EmailTemplate {
   return {
     id: `campaign-${campaign.id}`,
+    name: campaign.name,
+    description: null,
+    kind: "campaign",
     subject: campaign.emailSubject?.trim() || "Aeris Beauté",
     accentColor: campaign.emailAccentColor?.trim() || "#6f2c3f",
     blocks:
@@ -66,6 +73,7 @@ export async function sendCampaignEmailBatch(input: {
 
   const resend = getResend();
   const template = campaignToTemplate(input.campaign);
+  const customFonts = await listEmailFontsAdmin();
   const from = fromAddress();
 
   if (!resend) {
@@ -96,6 +104,7 @@ export async function sendCampaignEmailBatch(input: {
             name: customer.name,
             discountCode: LEAD_DISCOUNT_CODE,
             template,
+            customFonts,
           }),
         );
         return {

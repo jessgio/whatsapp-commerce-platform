@@ -19,6 +19,7 @@ const PUBLIC_PATHS = [
   "/auth/callback",
   "/api/webhooks",
   "/api/public",
+  "/api/staff",
   "/daftar",
   "/checkout",
 ];
@@ -50,9 +51,11 @@ export async function middleware(request: NextRequest) {
   }
 
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
-  // Webhooks / public APIs don't need session refresh — skip the auth round-trip.
+  // Webhooks / public / staff Bearer APIs don't need cookie session refresh.
   const skipSessionRefresh =
-    pathname.startsWith("/api/webhooks") || pathname.startsWith("/api/public");
+    pathname.startsWith("/api/webhooks") ||
+    pathname.startsWith("/api/public") ||
+    pathname.startsWith("/api/staff");
 
   // Demo mode (no Supabase): gate on the demo cookie only.
   if (!SUPABASE_URL || !SUPABASE_ANON) {

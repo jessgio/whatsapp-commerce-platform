@@ -29,7 +29,14 @@ import {
   createEmailAssetUploadSlotAction,
   saveLeadWelcomeEmailAction,
 } from "@/app/(portal)/marketing/design/email/actions";
+import { FormThankYouView } from "@/components/leads/form-thank-you-view";
 import { ImageResizeModal } from "@/components/settings/image-resize-modal";
+import {
+  ButtonStyleControls,
+  DividerStyleControls,
+  ImageStyleControls,
+  TextStyleControls,
+} from "@/components/settings/email-style-controls";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   BLOCK_LABELS,
@@ -37,6 +44,7 @@ import {
   type EmailBlock,
   type EmailBlockType,
 } from "@/lib/email-blocks";
+import type { EmailCustomFont } from "@/lib/email-fonts";
 import type { EmailTemplate } from "@/lib/email-templates";
 import { LEAD_DISCOUNT_CODE } from "@/lib/lead-offer";
 import { Button } from "@/components/ui";
@@ -65,6 +73,8 @@ function SortableBlockCard({
   onRemove,
   onPickImage,
   uploading,
+  accentColor,
+  customFonts,
 }: {
   block: EmailBlock;
   selected: boolean;
@@ -73,6 +83,8 @@ function SortableBlockCard({
   onRemove: () => void;
   onPickImage: (file: File, field: "src" | "logoUrl") => void;
   uploading: boolean;
+  accentColor: string;
+  customFonts: EmailCustomFont[];
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: block.id });
@@ -193,6 +205,20 @@ function SortableBlockCard({
                 <span className="text-muted">(hidden while logo is set)</span>
               ) : null}
             </label>
+            <TextStyleControls
+              style={block.style}
+              onChange={(style) => onChange({ ...block, style })}
+              defaults={{
+                fontFamily: "sans",
+                fontSize: 18,
+                fontWeight: 600,
+                align: "center",
+                color: "#fbf6ee",
+              }}
+              customFonts={customFonts}
+              showLineHeight={false}
+              showLetterSpacing
+            />
           </>
         )}
 
@@ -243,9 +269,10 @@ function SortableBlockCard({
               onChange={(e) => onChange({ ...block, alt: e.target.value })}
               placeholder="Alt text"
             />
-            <p className="text-[11px] text-muted">
-              Optional: make the image open a URL when tapped.
-            </p>
+            <ImageStyleControls
+              style={block.style}
+              onChange={(style) => onChange({ ...block, style })}
+            />
           </>
         )}
 
@@ -277,16 +304,63 @@ function SortableBlockCard({
               <code className="rounded bg-surface-muted px-1">**bold**</code>,{" "}
               <code className="rounded bg-surface-muted px-1">*italic*</code>
             </p>
+            <TextStyleControls
+              style={block.style}
+              onChange={(style) => onChange({ ...block, style })}
+              defaults={
+                block.type === "heading"
+                  ? {
+                      fontFamily: "serif",
+                      fontSize: 24,
+                      fontWeight: 600,
+                      align: "left",
+                      color: "#2d2b2a",
+                    }
+                  : block.type === "footer"
+                    ? {
+                        fontFamily: "sans",
+                        fontSize: 12,
+                        fontWeight: 400,
+                        align: "center",
+                        color: "#8a7e72",
+                      }
+                    : {
+                        fontFamily: "sans",
+                        fontSize: 16,
+                        fontWeight: 400,
+                        align: "left",
+                        color: "#8a7e72",
+                      }
+              }
+              customFonts={customFonts}
+              showLetterSpacing={block.type === "heading"}
+            />
           </>
         )}
 
         {block.type === "discount" && (
-          <input
-            className={fieldClass}
-            value={block.label}
-            onChange={(e) => onChange({ ...block, label: e.target.value })}
-            placeholder="Discount label"
-          />
+          <>
+            <input
+              className={fieldClass}
+              value={block.label}
+              onChange={(e) => onChange({ ...block, label: e.target.value })}
+              placeholder="Discount label"
+            />
+            <TextStyleControls
+              style={block.style}
+              onChange={(style) => onChange({ ...block, style })}
+              defaults={{
+                fontFamily: "sans",
+                fontSize: 11,
+                fontWeight: 400,
+                align: "center",
+                color: "#8a7e72",
+              }}
+              customFonts={customFonts}
+              showLineHeight={false}
+              showLetterSpacing
+            />
+          </>
         )}
 
         {block.type === "button" && (
@@ -303,6 +377,12 @@ function SortableBlockCard({
               onChange={(e) => onChange({ ...block, href: e.target.value })}
               placeholder="https://"
             />
+            <ButtonStyleControls
+              style={block.style}
+              onChange={(style) => onChange({ ...block, style })}
+              accentFallback={accentColor}
+              customFonts={customFonts}
+            />
           </>
         )}
 
@@ -312,7 +392,7 @@ function SortableBlockCard({
             <input
               type="number"
               min={8}
-              max={120}
+              max={160}
               className={fieldClass}
               value={block.height}
               onChange={(e) =>
@@ -326,7 +406,10 @@ function SortableBlockCard({
         )}
 
         {block.type === "divider" && (
-          <p className="text-xs text-muted">Horizontal rule between sections.</p>
+          <DividerStyleControls
+            style={block.style}
+            onChange={(style) => onChange({ ...block, style })}
+          />
         )}
       </div>
     </div>
@@ -334,9 +417,12 @@ function SortableBlockCard({
 }
 
 type EmailSaveInput = {
+  id: string;
+  name: string;
   subject: string;
   accentColor: string;
   blocks: EmailBlock[];
+  description?: string | null;
 };
 
 type EmailSaveResult = { ok: boolean; error?: string };
@@ -344,14 +430,27 @@ type EmailSaveResult = { ok: boolean; error?: string };
 export function EmailTemplateEditor({
   initial,
   onSave,
-  successMessage = "Template saved. New form submissions will use this design.",
+  customFonts = [],
+  showNameField = true,
+  showSubjectField = true,
+  successMessage = "Template saved.",
   saveLabel = "Save template",
+  previewVariant = "email",
+  discountCode = LEAD_DISCOUNT_CODE,
 }: {
   initial: EmailTemplate;
+  /** Pass a server action reference — do not wrap in an inline closure from a Server Component. */
   onSave?: (input: EmailSaveInput) => Promise<EmailSaveResult>;
+  customFonts?: EmailCustomFont[];
+  showNameField?: boolean;
+  showSubjectField?: boolean;
   successMessage?: string;
   saveLabel?: string;
+  /** `web` uses the form thank-you landing preview instead of the email chrome. */
+  previewVariant?: "email" | "web";
+  discountCode?: string;
 }) {
+  const [name, setName] = useState(initial.name);
   const [subject, setSubject] = useState(initial.subject);
   const [accentColor, setAccentColor] = useState(initial.accentColor);
   const [blocks, setBlocks] = useState<EmailBlock[]>(initial.blocks);
@@ -380,12 +479,24 @@ export function EmailTemplateEditor({
   const previewTemplate = useMemo<EmailTemplate>(
     () => ({
       id: initial.id,
+      name,
+      description: initial.description,
+      kind: initial.kind,
       subject,
       accentColor,
       blocks,
       updatedAt: initial.updatedAt,
     }),
-    [initial.id, initial.updatedAt, subject, accentColor, blocks],
+    [
+      initial.id,
+      initial.description,
+      initial.kind,
+      initial.updatedAt,
+      name,
+      subject,
+      accentColor,
+      blocks,
+    ],
   );
 
   function updateBlock(id: string, next: EmailBlock) {
@@ -492,11 +603,22 @@ export function EmailTemplateEditor({
     setSaving(true);
     setMessage(null);
     try {
-      const save = onSave ?? saveLeadWelcomeEmailAction;
+      const save =
+        onSave ??
+        (async (input) =>
+          saveLeadWelcomeEmailAction({
+            subject: input.subject,
+            accentColor: input.accentColor,
+            blocks: input.blocks,
+            name: input.name,
+          }));
       const res = await save({
+        id: initial.id,
+        name,
         subject,
         accentColor,
         blocks,
+        description: initial.description,
       });
       setMessage({
         ok: res.ok,
@@ -511,24 +633,49 @@ export function EmailTemplateEditor({
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <div className="space-y-4">
         <div className="rounded-[14px] border border-border bg-surface p-5">
-          <h2 className="text-sm font-semibold text-foreground">Email settings</h2>
+          <h2 className="text-sm font-semibold text-foreground">
+            {previewVariant === "web" ? "Landing page settings" : "Email settings"}
+          </h2>
           <p className="mt-1 text-xs text-muted">
             Placeholders:{" "}
-            <code className="rounded bg-surface-muted px-1">{"{name}"}</code>,{" "}
-            <code className="rounded bg-surface-muted px-1">{"{edit_url}"}</code>{" "}
-            (revise-info link). Text supports markdown links, bold, and italic.
+            <code className="rounded bg-surface-muted px-1">{"{name}"}</code>
+            {previewVariant === "email" ? (
+              <>
+                ,{" "}
+                <code className="rounded bg-surface-muted px-1">
+                  {"{edit_url}"}
+                </code>
+              </>
+            ) : null}
+            . Per-block controls: font, size, weight, alignment, color, and
+            layout. Text also supports markdown links, bold, and italic.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label className="text-sm font-medium text-foreground">
-                Subject line
-              </label>
-              <input
-                className={fieldClass}
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-              />
-            </div>
+            {showNameField ? (
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium text-foreground">
+                  Template name
+                </label>
+                <input
+                  className={fieldClass}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Reorder nurture"
+                />
+              </div>
+            ) : null}
+            {showSubjectField ? (
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium text-foreground">
+                  Subject line
+                </label>
+                <input
+                  className={fieldClass}
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                />
+              </div>
+            ) : null}
             <div>
               <label className="text-sm font-medium text-foreground">
                 Accent color
@@ -578,6 +725,8 @@ export function EmailTemplateEditor({
                       setResizeTarget({ blockId: block.id, file, field })
                     }
                     uploading={uploadingId === block.id}
+                    accentColor={accentColor}
+                    customFonts={customFonts}
                   />
                 ))}
               </div>
@@ -654,14 +803,28 @@ export function EmailTemplateEditor({
             />
           </div>
         </div>
-        <div className="overflow-hidden rounded-[14px] border border-border bg-cream">
-          <LeadWelcomeEmail
+        {previewVariant === "web" ? (
+          <FormThankYouView
+            thankYou={{
+              accentColor,
+              blocks,
+              pageBg: null,
+            }}
+            discountCode={discountCode}
             name={previewName || "Customer"}
-            discountCode={LEAD_DISCOUNT_CODE}
-            template={previewTemplate}
-            editUrl="https://join.aerisbeaute.com/daftar/edit?token=preview"
+            showPageChrome={false}
           />
-        </div>
+        ) : (
+          <div className="overflow-hidden rounded-[14px] border border-border bg-cream">
+            <LeadWelcomeEmail
+              name={previewName || "Customer"}
+              discountCode={discountCode}
+              template={previewTemplate}
+              customFonts={customFonts}
+              editUrl="https://join.aerisbeaute.com/daftar/edit?token=preview"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

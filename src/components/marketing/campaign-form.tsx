@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui";
 import { EmailTemplateEditor } from "@/components/settings/email-template-editor";
 import {
@@ -17,6 +18,7 @@ import {
   type CampaignWaMode,
 } from "@/lib/campaigns";
 import { DEFAULT_LEAD_WELCOME_BLOCKS } from "@/lib/email-blocks";
+import type { EmailCustomFont } from "@/lib/email-fonts";
 import type { EmailTemplate } from "@/lib/email-templates";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +33,8 @@ export function CampaignForm({
   segments,
   templateDesigns,
   interactiveDesigns,
+  emailLibrary,
+  customFonts,
   canSend,
   audienceCount,
 }: {
@@ -38,6 +42,8 @@ export function CampaignForm({
   segments: SegmentOption[];
   templateDesigns: DesignOption[];
   interactiveDesigns: DesignOption[];
+  emailLibrary: EmailTemplate[];
+  customFonts: EmailCustomFont[];
   canSend: boolean;
   audienceCount: number;
 }) {
@@ -47,36 +53,47 @@ export function CampaignForm({
   const [channel, setChannel] = useState<CampaignChannel>(initial.channel);
   const [segmentId, setSegmentId] = useState(initial.segmentId ?? "");
   const [scheduledAt, setScheduledAt] = useState(
-    initial.scheduledAt
-      ? initial.scheduledAt.slice(0, 16)
-      : "",
+    initial.scheduledAt ? initial.scheduledAt.slice(0, 16) : "",
   );
   const [waMode, setWaMode] = useState<CampaignWaMode>(
     initial.waMode ?? "template",
   );
   const [waDesignId, setWaDesignId] = useState(initial.waDesignId ?? "");
+  const [emailTemplateId, setEmailTemplateId] = useState(
+    initial.emailTemplateId ?? "",
+  );
+  const [emailDraft, setEmailDraft] = useState<EmailTemplate>(() => ({
+    id: `campaign-email-${initial.id}`,
+    name: initial.name,
+    description: null,
+    kind: "campaign",
+    subject: initial.emailSubject ?? "Halo {name} — penawaran Aeris Beauté",
+    accentColor: initial.emailAccentColor ?? "#6f2c3f",
+    blocks: initial.emailBlocks?.length
+      ? initial.emailBlocks
+      : DEFAULT_LEAD_WELCOME_BLOCKS,
+    updatedAt: initial.updatedAt,
+  }));
+  const [editorKey, setEditorKey] = useState(0);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(
     null,
-  );
-
-  const emailInitial = useMemo<EmailTemplate>(
-    () => ({
-      id: `campaign-email-${initial.id}`,
-      subject: initial.emailSubject ?? "Halo {name} — penawaran Aeris Beauté",
-      accentColor: initial.emailAccentColor ?? "#6f2c3f",
-      blocks: initial.emailBlocks?.length
-        ? initial.emailBlocks
-        : DEFAULT_LEAD_WELCOME_BLOCKS,
-      updatedAt: initial.updatedAt,
-    }),
-    [initial],
   );
 
   const designOptions =
     waMode === "template" ? templateDesigns : interactiveDesigns;
 
+  const libraryOptions = useMemo(
+    () =>
+      emailLibrary.map((t) => ({
+        id: t.id,
+        name: t.kind === "system" ? `${t.name} (system)` : t.name,
+      })),
+    [emailLibrary],
+  );
+
   function buildPayload(
     email?: {
+      name?: string;
       subject: string;
       accentColor: string;
       blocks: EmailTemplate["blocks"];
@@ -90,14 +107,40 @@ export function CampaignForm({
       scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
       waMode: channel === "whatsapp" ? waMode : null,
       waDesignId: channel === "whatsapp" ? waDesignId || null : null,
-      emailSubject: channel === "email" ? (email?.subject ?? emailInitial.subject) : null,
+      emailTemplateId:
+        channel === "email" ? emailTemplateId || null : null,
+      emailSubject:
+        channel === "email"
+          ? (email?.subject ?? emailDraft.subject)
+          : null,
       emailAccentColor:
         channel === "email"
-          ? (email?.accentColor ?? emailInitial.accentColor)
+          ? (email?.accentColor ?? emailDraft.accentColor)
           : null,
       emailBlocks:
-        channel === "email" ? (email?.blocks ?? emailInitial.blocks) : null,
+        channel === "email" ? (email?.blocks ?? emailDraft.blocks) : null,
     };
+  }
+
+  function loadLibraryTemplate(id: string) {
+    setEmailTemplateId(id);
+    const tpl = emailLibrary.find((t) => t.id === id);
+    if (!tpl) return;
+    setEmailDraft({
+      id: `campaign-email-${initial.id}`,
+      name: tpl.name,
+      description: tpl.description,
+      kind: "campaign",
+      subject: tpl.subject,
+      accentColor: tpl.accentColor,
+      blocks: [...tpl.blocks],
+      updatedAt: tpl.updatedAt,
+    });
+    setEditorKey((k) => k + 1);
+    setMessage({
+      ok: true,
+      text: `Loaded “${tpl.name}” into this campaign. Save to keep the copy.`,
+    });
   }
 
   function handleSaveBasics() {
@@ -278,7 +321,37 @@ export function CampaignForm({
               </p>
             ) : null}
           </div>
-        ) : null}
+        ) : (
+          <div className="mt-4">
+            <label className="text-sm font-medium">
+              Start from email template
+            </label>
+            <div className="mt-1 flex flex-wrap gap-2">
+              <select
+                className={cn(fieldClass, "mt-0 max-w-md flex-1")}
+                value={emailTemplateId}
+                onChange={(e) => loadLibraryTemplate(e.target.value)}
+              >
+                <option value="">Custom / blank campaign design…</option>
+                {libraryOptions.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+              <Link
+                href="/marketing/design/email"
+                className="inline-flex items-center text-xs text-merlot hover:underline"
+              >
+                Manage templates
+              </Link>
+            </div>
+            <p className="mt-1 text-xs text-muted">
+              Loading a template copies it into this campaign so you can tweak
+              without changing the library original.
+            </p>
+          </div>
+        )}
 
         {message ? (
           <p
@@ -312,11 +385,7 @@ export function CampaignForm({
               >
                 Schedule
               </Button>
-              <Button
-                type="button"
-                disabled={pending}
-                onClick={handleSendNow}
-              >
+              <Button type="button" disabled={pending} onClick={handleSendNow}>
                 Send now
               </Button>
             </>
@@ -330,10 +399,19 @@ export function CampaignForm({
             Email message design
           </h2>
           <EmailTemplateEditor
-            initial={emailInitial}
+            key={editorKey}
+            initial={emailDraft}
+            customFonts={customFonts}
+            showNameField={false}
             successMessage="Campaign email design saved."
             saveLabel="Save email design"
             onSave={async (email) => {
+              setEmailDraft((prev) => ({
+                ...prev,
+                subject: email.subject,
+                accentColor: email.accentColor,
+                blocks: email.blocks,
+              }));
               const res = await saveCampaignAction(buildPayload(email));
               if (res.ok) router.refresh();
               return res;

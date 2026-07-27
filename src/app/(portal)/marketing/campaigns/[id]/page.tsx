@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/guard";
 import { can } from "@/lib/rbac";
 import { getCampaign } from "@/lib/data/campaigns";
+import { listEmailFonts } from "@/lib/data/email-fonts";
+import { listEmailTemplates } from "@/lib/data/email-templates";
 import { listCustomers } from "@/lib/data/repo";
 import { listSegmentDefinitions } from "@/lib/data/segments";
 import {
@@ -23,12 +25,15 @@ export default async function CampaignDetailPage({
   const campaign = await getCampaign(id);
   if (!campaign) notFound();
 
-  const [segments, customers, templates, interactive] = await Promise.all([
-    listSegmentDefinitions(),
-    listCustomers(),
-    listWaTemplateDesigns(),
-    listWaInteractiveDesigns(),
-  ]);
+  const [segments, customers, templates, interactive, emails, fonts] =
+    await Promise.all([
+      listSegmentDefinitions(),
+      listCustomers(),
+      listWaTemplateDesigns(),
+      listWaInteractiveDesigns(),
+      listEmailTemplates(),
+      listEmailFonts(),
+    ]);
 
   const segmentOptions = segments.map((s) => ({
     id: s.id,
@@ -69,6 +74,8 @@ export default async function CampaignDetailPage({
           id: t.id,
           name: t.name,
         }))}
+        emailLibrary={emails}
+        customFonts={fonts}
         canSend={can(user.role, "marketing.send")}
         audienceCount={audienceCount}
       />
