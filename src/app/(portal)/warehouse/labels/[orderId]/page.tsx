@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requirePermission } from "@/lib/guard";
-import { getOrder, getProductBarcode } from "@/lib/data/repo";
+import { getOrder, getProductBarcodes } from "@/lib/data/repo";
 import { Barcode } from "@/components/warehouse/barcode";
 import { PrintButton } from "@/components/warehouse/label-actions";
 
@@ -29,12 +29,11 @@ export default async function LabelPage({
     );
   }
 
-  const items = await Promise.all(
-    order.items.map(async (it) => ({
-      ...it,
-      barcode: await getProductBarcode(it.productId),
-    })),
-  );
+  const barcodes = await getProductBarcodes(order.items.map((it) => it.productId));
+  const items = order.items.map((it) => ({
+    ...it,
+    barcode: barcodes.get(it.productId) ?? it.sku,
+  }));
 
   return (
     <div>

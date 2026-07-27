@@ -20,9 +20,11 @@ import type {
   Customer,
   Message,
   Order,
+  PackScanLog,
   PackSession,
   Product,
   Shipment,
+  ShipmentEvent,
   SupportCase,
   WarehouseNotice,
 } from "@/lib/types";
@@ -207,18 +209,51 @@ export async function listOrdersForCustomer(customerId: string): Promise<Order[]
 /* ---------- Cases ---------- */
 
 export async function listCases(): Promise<SupportCase[]> {
+  if (shouldUseSupabaseData()) {
+    const supabase = await createSupabaseServerClient();
+    const res = await supabase
+      .from("cases")
+      .select(
+        "*, customers!cases_customer_id_fkey(name), users!cases_owner_id_fkey(name)",
+      )
+      .order("created_at", { ascending: false })
+      .limit(200);
+    return liveRows("listCases", res).map(mapCase);
+  }
   return DEMO_CASES;
 }
 
 /* ---------- Shipments ---------- */
 
 export async function listShipments(): Promise<Shipment[]> {
+  if (shouldUseSupabaseData()) {
+    const supabase = await createSupabaseServerClient();
+    const res = await supabase
+      .from("shipments")
+      .select(
+        "*, orders!shipments_order_id_fkey(code, customers!orders_customer_id_fkey(name)), shipment_events(status, note, at)",
+      )
+      .order("created_at", { ascending: false })
+      .limit(200);
+    return liveRows("listShipments", res).map(mapShipment);
+  }
   return DEMO_SHIPMENTS;
 }
 
 /* ---------- Warehouse ---------- */
 
 export async function listNotices(): Promise<WarehouseNotice[]> {
+  if (shouldUseSupabaseData()) {
+    const supabase = await createSupabaseServerClient();
+    const res = await supabase
+      .from("warehouse_notices")
+      .select(
+        "*, orders!warehouse_notices_order_id_fkey(code), users!warehouse_notices_raised_by_fkey(name)",
+      )
+      .order("created_at", { ascending: false })
+      .limit(200);
+    return liveRows("listNotices", res).map(mapNotice);
+  }
   return DEMO_NOTICES;
 }
 
@@ -226,31 +261,117 @@ export async function listNotices(): Promise<WarehouseNotice[]> {
 
 /** Orders that are paid/allocated and have a label affixed — ready to pack. */
 export async function listPackableOrders(): Promise<Order[]> {
-  const orders = await listOrders();
-  return orders.filter(
+  if (shouldUseSupabaseData()) {
+    const supabase = await createSupabaseServerClient();
+    const res = await supabase
+      .from("orders")
+      .select(
+        "*, customers!orders_customer_id_fkey(name), order_items(product_id, sku, name, qty, unit_price)",
+      )
+      .in("status", ["paid", "allocated"])
+      .not("label_number", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    return liveRows("listPackableOrders", res).map(mapOrder);
+  }
+  return DEMO_ORDERS.filter(
     (o) => ["paid", "allocated"].includes(o.status) && o.labelNumber,
   );
 }
 
 export async function findOrderByLabel(label: string): Promise<Order | null> {
-  const norm = label.trim().toLowerCase();
-  const orders = await listOrders();
+  const norm = label.trim();
+  if (!norm) return null;
+
+  if (shouldUseSupabaseData()) {
+    // `.or()` takes a raw PostgREST filter string, so a scanned value containing
+    // commas or dots could graft on extra conditions. AWBs and order codes are
+    // alphanumeric with dashes, and anything else cannot match a real order.
+    if (!/^[A-Za-z0-9_-]+$/.test(norm)) return null;
+
+    const supabase = await createSupabaseServerClient();
+    // Packers scan the AWB but may also key in the order code; `ilike` keeps the
+    // lookup case-insensitive (see the trigram indexes in migration 0018).
+    const res = await supabase
+      .from("orders")
+      .select(
+        "*, customers!orders_customer_id_fkey(name), order_items(product_id, sku, name, qty, unit_price)",
+      )
+      .or(`label_number.ilike.${norm},code.ilike.${norm}`)
+      .limit(1)
+      .maybeSingle();
+    const row = liveRow("findOrderByLabel", res);
+    return row ? mapOrder(row) : null;
+  }
+
+  const lower = norm.toLowerCase();
   return (
-    orders.find(
+    DEMO_ORDERS.find(
       (o) =>
-        o.labelNumber?.toLowerCase() === norm || o.code.toLowerCase() === norm,
+        o.labelNumber?.toLowerCase() === lower || o.code.toLowerCase() === lower,
     ) ?? null
   );
 }
 
 export async function listPackSessions(): Promise<PackSession[]> {
+  if (shouldUseSupabaseData()) {
+    const supabase = await createSupabaseServerClient();
+    const res = await supabase
+      .from("pack_sessions")
+      .select(PACK_SESSION_SELECT)
+      .order("started_at", { ascending: false })
+      .limit(200);
+    return liveRows("listPackSessions", res).map(mapPackSession);
+  }
   return [...DEMO_PACK_SESSIONS].sort(
     (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
   );
 }
 
-export async function getProductBarcode(productId: string): Promise<string> {
-  return DEMO_PRODUCTS.find((p) => p.id === productId)?.barcode ?? productId;
+const PACK_SESSION_SELECT =
+  "*, orders!pack_sessions_order_id_fkey(code), users!pack_sessions_packer_id_fkey(name), pack_session_items(product_id, sku, barcode, name, required, scanned), pack_scans(sku, name, scanned_at)";
+
+export async function getPackSession(sessionId: string): Promise<PackSession | null> {
+  if (shouldUseSupabaseData()) {
+    const supabase = await createSupabaseServerClient();
+    const res = await supabase
+      .from("pack_sessions")
+      .select(PACK_SESSION_SELECT)
+      .eq("id", sessionId)
+      .maybeSingle();
+    const row = liveRow("getPackSession", res);
+    return row ? mapPackSession(row) : null;
+  }
+  return DEMO_PACK_SESSIONS.find((s) => s.id === sessionId) ?? null;
+}
+
+/**
+ * Scannable barcodes for a set of products, keyed by product id. Batched
+ * because callers resolve every line item of an order at once.
+ */
+export async function getProductBarcodes(
+  productIds: string[],
+): Promise<Map<string, string>> {
+  const ids = [...new Set(productIds.filter(Boolean))];
+  if (ids.length === 0) return new Map();
+
+  if (shouldUseSupabaseData()) {
+    const supabase = await createSupabaseServerClient();
+    const res = await supabase.from("products").select("id, sku, barcode").in("id", ids);
+    return new Map(
+      liveRows<{ id: string; sku: string; barcode: string | null }>(
+        "getProductBarcodes",
+        res,
+      ).map((p) => [p.id, p.barcode ?? p.sku]),
+    );
+  }
+
+  return new Map(
+    ids.map((id) => {
+      const product = DEMO_PRODUCTS.find((p) => p.id === id);
+      return [id, product?.barcode ?? id];
+    }),
+  );
 }
 
 /* ---------- Row mappers (snake_case DB -> domain) ---------- */
@@ -353,6 +474,103 @@ function mapMessage(r: any): Message {
     createdAt: r.created_at,
     authorName: r.author_name,
     status: r.status ?? null,
+  };
+}
+
+function mapCase(r: any): SupportCase {
+  const customer = Array.isArray(r.customers) ? r.customers[0] : r.customers;
+  const owner = Array.isArray(r.users) ? r.users[0] : r.users;
+  return {
+    id: r.id,
+    code: r.code,
+    customerId: r.customer_id ?? "",
+    customerName: customer?.name ?? "Unknown",
+    subject: r.subject,
+    priority: r.priority,
+    status: r.status,
+    ownerId: r.owner_id ?? null,
+    ownerName: owner?.name ?? null,
+    orderId: r.order_id ?? null,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at ?? r.created_at,
+  };
+}
+
+function mapShipment(r: any): Shipment {
+  const order = Array.isArray(r.orders) ? r.orders[0] : r.orders;
+  const customer = Array.isArray(order?.customers) ? order.customers[0] : order?.customers;
+  const events: ShipmentEvent[] = (r.shipment_events ?? [])
+    .map((e: any) => ({
+      status: e.status ?? "",
+      note: e.note ?? "",
+      at: e.at,
+    }))
+    .sort(
+      (a: ShipmentEvent, b: ShipmentEvent) =>
+        new Date(a.at).getTime() - new Date(b.at).getTime(),
+    );
+  return {
+    id: r.id,
+    orderId: r.order_id,
+    orderCode: order?.code ?? "",
+    customerName: customer?.name ?? "Unknown",
+    courier: r.courier ?? "",
+    service: r.service ?? "",
+    trackingNumber: r.tracking_number ?? "",
+    status: r.status,
+    cost: Number(r.cost ?? 0),
+    destinationCity: r.destination_city ?? "",
+    events,
+    createdAt: r.created_at,
+  };
+}
+
+function mapNotice(r: any): WarehouseNotice {
+  const order = Array.isArray(r.orders) ? r.orders[0] : r.orders;
+  const raisedBy = Array.isArray(r.users) ? r.users[0] : r.users;
+  return {
+    id: r.id,
+    orderId: r.order_id ?? "",
+    orderCode: order?.code ?? "",
+    raisedByName: raisedBy?.name ?? "System",
+    type: r.type,
+    message: r.message,
+    status: r.status,
+    createdAt: r.created_at,
+  };
+}
+
+function mapPackSession(r: any): PackSession {
+  const order = Array.isArray(r.orders) ? r.orders[0] : r.orders;
+  const packer = Array.isArray(r.users) ? r.users[0] : r.users;
+  return {
+    id: r.id,
+    orderId: r.order_id,
+    orderCode: order?.code ?? "",
+    labelNumber: r.label_number ?? order?.code ?? "",
+    packerId: r.packer_id ?? "",
+    packerName: packer?.name ?? "Unknown",
+    status: r.status,
+    startedAt: r.started_at,
+    completedAt: r.completed_at ?? null,
+    items: (r.pack_session_items ?? []).map((it: any) => ({
+      productId: it.product_id ?? "",
+      sku: it.sku ?? "",
+      barcode: it.barcode ?? it.sku ?? "",
+      name: it.name ?? it.sku ?? "Item",
+      required: Number(it.required ?? 0),
+      scanned: Number(it.scanned ?? 0),
+    })),
+    scans: (r.pack_scans ?? [])
+      .map((s: any) => ({
+        sku: s.sku ?? "",
+        name: s.name ?? s.sku ?? "Item",
+        at: s.scanned_at,
+      }))
+      .sort(
+        (a: PackScanLog, b: PackScanLog) =>
+          new Date(a.at).getTime() - new Date(b.at).getTime(),
+      ),
   };
 }
 
