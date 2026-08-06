@@ -180,7 +180,7 @@ export function FormInspector({
           </InspectorField>
           <InspectorField
             label="Discount code"
-            hint="Shown on the thank-you page and in the welcome email."
+            hint="Issued to new QR signups on the thank-you page and welcome email. Returning leads keep their original code when you rotate this after Shopee voucher limits."
           >
             <input
               className={editorFieldClass}

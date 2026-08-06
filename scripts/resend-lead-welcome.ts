@@ -25,7 +25,7 @@ async function main() {
   const supabase = createClient(url, key);
   const { data, error } = await supabase
     .from("customers")
-    .select("name, edit_token, email")
+    .select("name, edit_token, email, lead_discount_code")
     .ilike("email", email)
     .maybeSingle();
 
@@ -38,7 +38,7 @@ async function main() {
     to: data.email ?? email,
     name: data.name,
     editToken: data.edit_token,
-    discountCode: LEAD_DISCOUNT_CODE,
+    discountCode: data.lead_discount_code?.trim() || LEAD_DISCOUNT_CODE,
   });
 
   if (!result.ok) {

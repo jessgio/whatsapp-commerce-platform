@@ -4,7 +4,7 @@ import { getActiveFormTemplate } from "@/lib/data/form-templates";
 import { sendLeadWelcomeEmail } from "@/lib/email";
 import { isSupabaseConfigured } from "@/lib/env";
 import { newEditToken } from "@/lib/lead-edit";
-import { resolveLeadDiscountCode } from "@/lib/lead-offer";
+import { resolveStickyLeadDiscountCode } from "@/lib/lead-offer";
 import { parseLeadSubmission } from "@/lib/lead-form-submit";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
@@ -25,6 +25,14 @@ type LeadBody = {
   values?: Record<string, unknown>;
 };
 
+type ExistingLeadRow = {
+  id: string;
+  tags?: unknown;
+  edit_token?: string | null;
+  form_answers?: unknown;
+  lead_discount_code?: string | null;
+};
+
 function upsertDemoLead(data: {
   name: string;
   birthDate: string;
@@ -33,6 +41,7 @@ function upsertDemoLead(data: {
   waId: string;
   phone: string;
   formAnswers: Record<string, string | boolean>;
+  templateDiscountCode: string;
 }) {
   const now = new Date().toISOString();
   const emailLower = data.email.toLowerCase();
@@ -49,6 +58,10 @@ function upsertDemoLead(data: {
       ? prev.tags
       : [...prev.tags, "qr_lead"];
     const editToken = prev.editToken || newEditToken();
+    const discountCode = resolveStickyLeadDiscountCode({
+      templateCode: data.templateDiscountCode,
+      storedCode: prev.leadDiscountCode,
+    });
     DEMO_CUSTOMERS[existingIdx] = {
       ...prev,
       name: data.name,
@@ -64,10 +77,15 @@ function upsertDemoLead(data: {
       tags,
       editToken,
       formAnswers: data.formAnswers,
+      leadDiscountCode: prev.leadDiscountCode?.trim() || discountCode,
     };
-    return { id: prev.id, created: false, editToken };
+    return { id: prev.id, created: false, editToken, discountCode };
   }
 
+  const discountCode = resolveStickyLeadDiscountCode({
+    templateCode: data.templateDiscountCode,
+    storedCode: null,
+  });
   const editToken = newEditToken();
   const customer: Customer = {
     id: `c-lead-${Date.now()}`,
@@ -89,10 +107,11 @@ function upsertDemoLead(data: {
     termsVersion: TERMS_VERSION,
     editToken,
     formAnswers: data.formAnswers,
+    leadDiscountCode: discountCode,
     createdAt: now,
   };
   DEMO_CUSTOMERS.unshift(customer);
-  return { id: customer.id, created: true, editToken };
+  return { id: customer.id, created: true, editToken, discountCode };
 }
 
 export async function POST(req: NextRequest) {
@@ -114,7 +133,7 @@ export async function POST(req: NextRequest) {
   }
 
   const template = await getActiveFormTemplate();
-  const discountCode = resolveLeadDiscountCode(template.discountCode);
+  const templateDiscountCode = template.discountCode;
 
   const values: Record<string, unknown> = {
     ...(body.values ?? {}),
@@ -138,50 +157,65 @@ export async function POST(req: NextRequest) {
   const now = new Date().toISOString();
 
   if (!isSupabaseConfigured()) {
-    const result = upsertDemoLead({ ...lead, formAnswers });
+    const result = upsertDemoLead({
+      ...lead,
+      formAnswers,
+      templateDiscountCode,
+    });
     try {
       await sendLeadWelcomeEmail({
         to: lead.email,
         name: lead.name,
         editToken: result.editToken,
-        discountCode,
+        discountCode: result.discountCode,
       });
     } catch (e) {
       console.error("[leads] welcome email failed (non-blocking)", e);
     }
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, discountCode: result.discountCode });
   }
 
   const supabase = createSupabaseAdminClient();
+  const existingSelect =
+    "id, tags, edit_token, form_answers, lead_discount_code";
 
   const { data: byWa } = await supabase
     .from("customers")
-    .select("id, tags, edit_token, form_answers")
+    .select(existingSelect)
     .eq("wa_id", lead.waId)
     .maybeSingle();
 
-  let existing = byWa;
+  let existing = byWa as ExistingLeadRow | null;
 
   if (!existing) {
     const { data: byPhone } = await supabase
       .from("customers")
-      .select("id, tags, edit_token, form_answers")
+      .select(existingSelect)
       .eq("phone", lead.phone)
       .maybeSingle();
-    existing = byPhone;
+    existing = byPhone as ExistingLeadRow | null;
   }
 
   if (!existing) {
     const { data: byEmail } = await supabase
       .from("customers")
-      .select("id, tags, edit_token, form_answers")
+      .select(existingSelect)
       .ilike("email", lead.email)
       .maybeSingle();
-    existing = byEmail;
+    existing = byEmail as ExistingLeadRow | null;
   }
 
   const editToken =
     (existing?.edit_token as string | null | undefined) || newEditToken();
+
+  const discountCode = resolveStickyLeadDiscountCode({
+    templateCode: templateDiscountCode,
+    storedCode: existing?.lead_discount_code,
+  });
+
+  // Assign once — never overwrite an earlier voucher on re-signup.
+  const leadDiscountToStore =
+    existing?.lead_discount_code?.trim() || discountCode;
 
   const prevAnswers =
     existing?.form_answers &&
@@ -203,6 +237,7 @@ export async function POST(req: NextRequest) {
     terms_version: TERMS_VERSION,
     edit_token: editToken,
     form_answers: { ...prevAnswers, ...formAnswers },
+    lead_discount_code: leadDiscountToStore,
   };
 
   let customerId: string;
@@ -230,6 +265,7 @@ export async function POST(req: NextRequest) {
             terms_version: payload.terms_version,
             edit_token: editToken,
             form_answers: payload.form_answers,
+            lead_discount_code: leadDiscountToStore,
             tags,
           }
         : { ...payload, tags };
@@ -294,5 +330,5 @@ export async function POST(req: NextRequest) {
     console.error("[leads] welcome email failed (non-blocking)", e);
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, discountCode });
 }

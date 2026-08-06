@@ -304,7 +304,7 @@ export function LeadForm({
         }),
       });
       const json = (await res.json().catch(() => null)) as
-        | { ok?: boolean; error?: string }
+        | { ok?: boolean; error?: string; discountCode?: string }
         | null;
 
       if (!res.ok || !json?.ok) {
@@ -312,7 +312,12 @@ export function LeadForm({
         return;
       }
 
-      router.push("/daftar/terima-kasih");
+      const code = json.discountCode?.trim();
+      router.push(
+        code
+          ? `/daftar/terima-kasih?code=${encodeURIComponent(code)}`
+          : "/daftar/terima-kasih",
+      );
     } catch {
       setError("Gagal mengirim formulir. Periksa koneksi Anda.");
     } finally {

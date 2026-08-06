@@ -7,9 +7,24 @@ export const metadata: Metadata = {
   title: "Terima Kasih | Aeris Beauté",
 };
 
-export default async function TerimaKasihPage() {
+function sanitizeDiscountCode(raw?: string): string | null {
+  const code = raw?.trim();
+  if (!code || code.length > 64) return null;
+  // Shopee voucher codes are alphanumeric (plus common separators).
+  if (!/^[A-Za-z0-9._-]+$/.test(code)) return null;
+  return code;
+}
+
+export default async function TerimaKasihPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string }>;
+}) {
+  const { code: codeParam } = await searchParams;
   const template = await getActiveFormTemplate();
-  const discountCode = resolveLeadDiscountCode(template.discountCode);
+  const discountCode =
+    sanitizeDiscountCode(codeParam) ??
+    resolveLeadDiscountCode(template.discountCode);
 
   return (
     <FormThankYouView

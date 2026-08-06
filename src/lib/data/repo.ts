@@ -651,6 +651,10 @@ export function mapCustomer(r: any): Customer {
       !Array.isArray(r.form_answers)
         ? r.form_answers
         : undefined,
+    leadDiscountCode:
+      typeof r.lead_discount_code === "string" && r.lead_discount_code.trim()
+        ? r.lead_discount_code.trim()
+        : null,
     createdAt: r.created_at,
   };
 }
