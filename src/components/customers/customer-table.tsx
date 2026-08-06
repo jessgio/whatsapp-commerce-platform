@@ -5,11 +5,16 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import { Avatar, Table, Th, Td } from "@/components/ui";
 import { ConsentBadge } from "@/components/status";
-import { formatIDRCompact, formatDate } from "@/lib/format";
+import { formatIDRCompact, formatDate, formatDateTime } from "@/lib/format";
 import { customerMatchesRules, type SegmentDefinition } from "@/lib/segments";
 import type { Customer } from "@/lib/types";
 
 const MAX_ROWS = 100;
+
+/** Prefer QR form acceptance time; fall back to row creation. */
+function signedUpAt(c: Customer): string | null {
+  return c.termsAcceptedAt || c.createdAt || null;
+}
 
 export function CustomerTable({
   customers,
@@ -110,13 +115,17 @@ export function CustomerTable({
             <Th>Customer</Th>
             <Th>Consent</Th>
             <Th>Segments</Th>
+            <Th>Signed up</Th>
+            <Th>Discount</Th>
             <Th className="text-right">Orders</Th>
             <Th className="text-right">Lifetime value</Th>
             <Th>Last order</Th>
           </tr>
         </thead>
         <tbody>
-          {visible.map((c) => (
+          {visible.map((c) => {
+            const signup = signedUpAt(c);
+            return (
             <tr key={c.id} className="transition-colors hover:bg-surface-muted">
               <Td>
                 <Link href={`/customers/${c.id}`} className="flex items-center gap-3">
@@ -139,11 +148,24 @@ export function CustomerTable({
                   ))}
                 </div>
               </Td>
+              <Td className="whitespace-nowrap text-sm text-muted">
+                {signup ? formatDateTime(signup) : "—"}
+              </Td>
+              <Td className="text-sm">
+                {c.leadDiscountCode ? (
+                  <span className="font-mono text-xs tracking-wide text-foreground">
+                    {c.leadDiscountCode}
+                  </span>
+                ) : (
+                  <span className="text-muted">—</span>
+                )}
+              </Td>
               <Td className="text-right text-sm">{c.orderCount}</Td>
               <Td className="text-right text-sm font-medium">{formatIDRCompact(c.lifetimeValue)}</Td>
               <Td className="text-sm text-muted">{c.lastOrderAt ? formatDate(c.lastOrderAt) : "—"}</Td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </Table>
 
