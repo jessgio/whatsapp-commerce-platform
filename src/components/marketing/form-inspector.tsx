@@ -18,6 +18,7 @@ import {
   type FormFieldOption,
   type FormPageCopy,
 } from "@/lib/form-templates";
+import { QR_LEAD_FUNNEL } from "@/lib/qr-lead-funnel";
 import { cn } from "@/lib/utils";
 
 export type FormDoc = {
@@ -180,7 +181,7 @@ export function FormInspector({
           </InspectorField>
           <InspectorField
             label="Discount code"
-            hint="Issued to new QR signups on the thank-you page and welcome email. Returning leads keep their original code when you rotate this after Shopee voucher limits."
+            hint={QR_LEAD_FUNNEL.discountSourceHint}
           >
             <input
               className={editorFieldClass}

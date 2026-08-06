@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { ImagePlus, Trash2 } from "lucide-react";
 import {
   ButtonStyleControls,
@@ -103,6 +104,8 @@ export function EmailInspector({
   showSubjectField,
   uploading,
   readOnly,
+  linkedDiscountCode,
+  linkedDiscountHref,
   onChangeDoc,
   onChangeBlock,
   onPickImage,
@@ -117,6 +120,9 @@ export function EmailInspector({
   showSubjectField: boolean;
   uploading: boolean;
   readOnly: boolean;
+  /** Live voucher from the QR form — shown read-only on the discount block. */
+  linkedDiscountCode?: string;
+  linkedDiscountHref?: string;
   onChangeDoc: (patch: Partial<EmailDoc>) => void;
   onChangeBlock: (next: EmailBlock) => void;
   onPickImage: (blockId: string, file: File, field: "src" | "logoUrl") => void;
@@ -428,9 +434,33 @@ export function EmailInspector({
       return (
         <>
           <InspectorSection title="Discount code">
+            {linkedDiscountCode ? (
+              <InspectorField
+                label="Code (from QR form)"
+                hint="Not stored on this email. New signups get this code; returning leads keep their original."
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <code className="rounded-lg border border-border bg-surface-muted/50 px-3 py-2 font-mono text-sm tracking-wide text-foreground">
+                    {linkedDiscountCode}
+                  </code>
+                  {linkedDiscountHref ? (
+                    <Link
+                      href={linkedDiscountHref}
+                      className="text-xs font-medium text-merlot hover:underline"
+                    >
+                      Edit on QR form
+                    </Link>
+                  ) : null}
+                </div>
+              </InspectorField>
+            ) : null}
             <InspectorField
               label="Label"
-              hint="The code itself comes from the campaign or form template."
+              hint={
+                linkedDiscountCode
+                  ? "Display label above the code. The voucher value is set on the QR form."
+                  : "The code itself comes from the campaign or form template."
+              }
             >
               <input
                 className={editorFieldClass}

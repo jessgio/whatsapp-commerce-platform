@@ -3,6 +3,7 @@ import { requirePermission } from "@/lib/guard";
 import { can } from "@/lib/rbac";
 import { listFormTemplates } from "@/lib/data/form-templates";
 import { QR_LEAD_FORM_TEMPLATE_ID } from "@/lib/form-templates";
+import { QR_LEAD_FUNNEL } from "@/lib/qr-lead-funnel";
 import { Button, PageHeader } from "@/components/ui";
 import { createFormTemplateAction } from "@/app/(portal)/marketing/design/form/actions";
 import { redirect } from "next/navigation";
@@ -65,7 +66,7 @@ export default async function FormTemplatesListPage() {
                   </Link>
                   {t.id === QR_LEAD_FORM_TEMPLATE_ID ? (
                     <p className="text-xs text-muted">
-                      Powers public /daftar and /daftar/terima-kasih
+                      {QR_LEAD_FUNNEL.label} — form, thank-you, and welcome email
                     </p>
                   ) : null}
                 </td>

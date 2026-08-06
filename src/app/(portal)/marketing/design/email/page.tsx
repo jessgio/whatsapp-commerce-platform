@@ -4,7 +4,7 @@ import { requirePermission } from "@/lib/guard";
 import { can } from "@/lib/rbac";
 import { listEmailTemplates } from "@/lib/data/email-templates";
 import { listEmailFonts } from "@/lib/data/email-fonts";
-import { LEAD_WELCOME_TEMPLATE_ID } from "@/lib/email-templates";
+import { isQrLeadWelcomeEmail, QR_LEAD_FUNNEL } from "@/lib/qr-lead-funnel";
 import { Badge, Button, PageHeader } from "@/components/ui";
 import { CreateEmailTemplateButton } from "@/components/marketing/create-email-template-button";
 
@@ -90,14 +90,16 @@ export default async function EmailTemplatesListPage() {
                   <td className="px-4 py-3">
                     <Badge
                       tone={
-                        t.id === LEAD_WELCOME_TEMPLATE_ID || t.kind === "system"
+                        isQrLeadWelcomeEmail(t.id) || t.kind === "system"
                           ? "merlot"
                           : "neutral"
                       }
                     >
-                      {t.id === LEAD_WELCOME_TEMPLATE_ID || t.kind === "system"
-                        ? "Welcome / system"
-                        : "Campaign"}
+                      {isQrLeadWelcomeEmail(t.id)
+                        ? QR_LEAD_FUNNEL.label
+                        : t.kind === "system"
+                          ? "System"
+                          : "Campaign"}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-muted">

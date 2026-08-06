@@ -126,6 +126,8 @@ export function EmailTemplateEditor({
   saveLabel = "Save template",
   previewVariant = "email",
   discountCode = LEAD_DISCOUNT_CODE,
+  linkedDiscountCode,
+  linkedDiscountHref,
   heightClass,
   readOnly = false,
   active = true,
@@ -141,6 +143,12 @@ export function EmailTemplateEditor({
   /** `web` uses the form thank-you landing preview instead of the email chrome. */
   previewVariant?: "email" | "web";
   discountCode?: string;
+  /**
+   * When set, the discount block shows this code as read-only with a link to
+   * edit it on the QR form (code is not stored on the email template).
+   */
+  linkedDiscountCode?: string;
+  linkedDiscountHref?: string;
   /** Overrides the shell height when embedded inside another page. */
   heightClass?: string;
   readOnly?: boolean;
@@ -504,6 +512,8 @@ export function EmailTemplateEditor({
             showSubjectField={showSubjectField}
             uploading={uploadingId === selectedBlock?.id}
             readOnly={readOnly}
+            linkedDiscountCode={linkedDiscountCode}
+            linkedDiscountHref={linkedDiscountHref}
             onChangeDoc={changeDoc}
             onChangeBlock={changeBlock}
             onPickImage={pickImage}

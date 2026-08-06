@@ -2,12 +2,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/guard";
 import { getEmailTemplate } from "@/lib/data/email-templates";
+import { getActiveFormTemplate } from "@/lib/data/form-templates";
 import { listEmailFonts } from "@/lib/data/email-fonts";
-import { LEAD_WELCOME_TEMPLATE_ID } from "@/lib/email-templates";
 import { PageHeader } from "@/components/ui";
 import { EmailTemplateEditor } from "@/components/settings/email-template-editor";
 import { saveEmailTemplateAction } from "@/app/(portal)/marketing/design/email/actions";
 import { DeleteEmailTemplateButton } from "@/components/marketing/delete-email-template-button";
+import {
+  isQrLeadWelcomeEmail,
+  QR_LEAD_FUNNEL,
+} from "@/lib/qr-lead-funnel";
 
 export default async function EmailTemplateEditPage({
   params,
@@ -22,7 +26,9 @@ export default async function EmailTemplateEditPage({
   ]);
   if (!template) notFound();
 
-  const isWelcome = template.id === LEAD_WELCOME_TEMPLATE_ID;
+  const isWelcome = isQrLeadWelcomeEmail(template.id);
+  const formTemplate = isWelcome ? await getActiveFormTemplate() : null;
+  const linkedDiscount = formTemplate?.discountCode;
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -38,13 +44,32 @@ export default async function EmailTemplateEditPage({
             title={template.name}
             subtitle={
               isWelcome
-                ? "System template — sent to new joiners after the QR lead form"
+                ? "System template — part of the QR lead funnel"
                 : "Campaign template — reusable in Marketing → Campaigns"
             }
           />
         </div>
         {!isWelcome ? <DeleteEmailTemplateButton id={template.id} /> : null}
       </div>
+
+      {isWelcome ? (
+        <p className="shrink-0 rounded-lg border border-merlot/20 bg-merlot/5 px-3 py-2 text-xs leading-relaxed text-foreground">
+          {QR_LEAD_FUNNEL.welcomeBanner}{" "}
+          <Link
+            href={QR_LEAD_FUNNEL.formPath}
+            className="font-medium text-merlot hover:underline"
+          >
+            Open QR lead funnel
+          </Link>
+          {linkedDiscount ? (
+            <>
+              {" "}
+              · Current code{" "}
+              <code className="font-mono font-medium">{linkedDiscount}</code>
+            </>
+          ) : null}
+        </p>
+      ) : null}
 
       <p className="shrink-0 text-xs text-muted">
         Brand fonts:{" "}
@@ -63,6 +88,9 @@ export default async function EmailTemplateEditPage({
         initial={template}
         customFonts={fonts}
         heightClass="min-h-[520px] flex-1"
+        discountCode={linkedDiscount ?? undefined}
+        linkedDiscountCode={linkedDiscount ?? undefined}
+        linkedDiscountHref={isWelcome ? QR_LEAD_FUNNEL.formPath : undefined}
         successMessage={
           isWelcome
             ? "Welcome template saved. New form submissions will use this design."

@@ -6,23 +6,37 @@ import { useState } from "react";
 import { EmailTemplateEditor } from "@/components/settings/email-template-editor";
 import { FormTemplateEditor } from "@/components/marketing/form-template-editor";
 import { saveFormThankYouAction } from "@/app/(portal)/marketing/design/form/actions";
+import { saveEmailTemplateAction } from "@/app/(portal)/marketing/design/email/actions";
+import type { EmailCustomFont } from "@/lib/email-fonts";
 import type { EmailTemplate } from "@/lib/email-templates";
 import type { FormTemplate } from "@/lib/form-templates";
+import {
+  isQrLeadForm,
+  QR_LEAD_FUNNEL,
+} from "@/lib/qr-lead-funnel";
 import { cn } from "@/lib/utils";
 
-type Tab = "form" | "thankyou";
+type Tab = "form" | "thankyou" | "email";
 
 export function FormTemplateTabs({
   template,
   canEdit,
+  welcomeEmail,
+  customFonts = [],
 }: {
   template: FormTemplate;
   canEdit: boolean;
+  /** Only for the system QR form — enables the Welcome email tab. */
+  welcomeEmail?: EmailTemplate | null;
+  customFonts?: EmailCustomFont[];
 }) {
   const router = useRouter();
+  const isFunnel = isQrLeadForm(template.id) && Boolean(welcomeEmail);
   const [tab, setTab] = useState<Tab>("form");
   // Editors stay mounted once opened so switching tabs never drops unsaved work.
-  const [visited, setVisited] = useState<Set<Tab>>(() => new Set<Tab>(["form"]));
+  const [visited, setVisited] = useState<Set<Tab>>(
+    () => new Set<Tab>(["form"]),
+  );
 
   function openTab(next: Tab) {
     setTab(next);
@@ -41,16 +55,43 @@ export function FormTemplateTabs({
     updatedAt: template.updatedAt ?? new Date().toISOString(),
   };
 
+  const tabs = (
+    [
+      ["form", "Form"],
+      ["thankyou", "Thank you"],
+      ...(isFunnel ? ([["email", "Welcome email"]] as const) : []),
+    ] as const
+  );
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
+      {isFunnel ? (
+        <p className="shrink-0 rounded-lg border border-merlot/20 bg-merlot/5 px-3 py-2 text-xs leading-relaxed text-foreground">
+          {QR_LEAD_FUNNEL.funnelBanner}{" "}
+          <Link
+            href={QR_LEAD_FUNNEL.emailPath}
+            className="font-medium text-merlot hover:underline"
+          >
+            Open welcome email alone
+          </Link>
+        </p>
+      ) : (
+        <div className="flex shrink-0 justify-end">
+          <p className="text-xs text-muted">
+            Related welcome email:{" "}
+            <Link
+              href={QR_LEAD_FUNNEL.emailPath}
+              className="text-merlot hover:underline"
+            >
+              edit lead welcome
+            </Link>
+          </p>
+        </div>
+      )}
+
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div className="inline-flex rounded-lg border border-border bg-surface p-1">
-          {(
-            [
-              ["form", "Form"],
-              ["thankyou", "Thank you"],
-            ] as const
-          ).map(([id, label]) => (
+          {tabs.map(([id, label]) => (
             <button
               key={id}
               type="button"
@@ -66,15 +107,6 @@ export function FormTemplateTabs({
             </button>
           ))}
         </div>
-        <p className="text-xs text-muted">
-          Related welcome email:{" "}
-          <Link
-            href="/marketing/design/email/lead_welcome"
-            className="text-merlot hover:underline"
-          >
-            edit lead welcome
-          </Link>
-        </p>
       </div>
 
       {!canEdit ? (
@@ -119,8 +151,37 @@ export function FormTemplateTabs({
             showSubjectField={false}
             previewVariant="web"
             discountCode={template.discountCode}
+            linkedDiscountCode={template.discountCode}
+            linkedDiscountHref={QR_LEAD_FUNNEL.formPath}
             successMessage="Thank-you landing page saved."
             saveLabel="Save thank-you page"
+          />
+        </div>
+      ) : null}
+
+      {isFunnel && welcomeEmail && visited.has("email") ? (
+        <div
+          className={
+            tab === "email" ? "flex min-h-0 flex-1 flex-col" : "hidden"
+          }
+        >
+          <EmailTemplateEditor
+            key={`welcome-${welcomeEmail.id}`}
+            initial={welcomeEmail}
+            customFonts={customFonts}
+            onSave={async (input) => {
+              const res = await saveEmailTemplateAction(input);
+              if (res.ok) router.refresh();
+              return res;
+            }}
+            readOnly={!canEdit}
+            active={tab === "email"}
+            heightClass="min-h-[520px] flex-1"
+            discountCode={template.discountCode}
+            linkedDiscountCode={template.discountCode}
+            linkedDiscountHref={QR_LEAD_FUNNEL.formPath}
+            successMessage="Welcome template saved. New form submissions will use this design."
+            saveLabel="Save welcome email"
           />
         </div>
       ) : null}
