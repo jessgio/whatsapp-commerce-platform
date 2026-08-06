@@ -1,8 +1,14 @@
 import type {
   EmailButtonStyle,
+  EmailDiscountStyle,
   EmailDividerStyle,
+  EmailHeaderStyle,
   EmailImageStyle,
   EmailTextStyle,
+} from "@/lib/email-style";
+import {
+  EMAIL_BRAND_DEFAULT,
+  EMAIL_CREAM_DEFAULT,
 } from "@/lib/email-style";
 
 export type EmailBlockType =
@@ -25,7 +31,7 @@ export type HeaderBlock = BlockBase & {
   showMark: boolean;
   /** Uploaded brand logo URL (preferred over the letter mark) */
   logoUrl?: string;
-  style?: EmailTextStyle;
+  style?: EmailHeaderStyle;
 };
 
 export type ImageBlock = BlockBase & {
@@ -52,7 +58,7 @@ export type TextBlock = BlockBase & {
 export type DiscountBlock = BlockBase & {
   type: "discount";
   label: string;
-  style?: EmailTextStyle;
+  style?: EmailDiscountStyle;
 };
 
 export type ButtonBlock = BlockBase & {
@@ -103,7 +109,14 @@ export function createBlock(type: EmailBlockType): EmailBlock {
         brandName: "Aeris Beauté",
         showMark: true,
         logoUrl: "",
-        style: { align: "center", fontFamily: "sans", fontSize: 18, fontWeight: 600 },
+        style: {
+          align: "center",
+          fontFamily: "sans",
+          fontSize: 18,
+          fontWeight: 600,
+          color: EMAIL_CREAM_DEFAULT,
+          backgroundColor: EMAIL_BRAND_DEFAULT,
+        },
       };
     case "image":
       return {
@@ -145,7 +158,14 @@ export function createBlock(type: EmailBlockType): EmailBlock {
         id,
         type,
         label: "Kode diskon Anda",
-        style: { align: "center", fontFamily: "sans" },
+        style: {
+          align: "center",
+          fontFamily: "sans",
+          color: "#8a7e72",
+          backgroundColor: EMAIL_CREAM_DEFAULT,
+          borderColor: EMAIL_BRAND_DEFAULT,
+          codeColor: EMAIL_BRAND_DEFAULT,
+        },
       };
     case "button":
       return {
@@ -158,6 +178,8 @@ export function createBlock(type: EmailBlockType): EmailBlock {
           fontFamily: "sans",
           fontSize: 14,
           fontWeight: 600,
+          color: EMAIL_CREAM_DEFAULT,
+          backgroundColor: EMAIL_BRAND_DEFAULT,
           borderRadius: 10,
           fullWidth: false,
           paddingY: 12,
@@ -195,7 +217,14 @@ export const DEFAULT_LEAD_WELCOME_BLOCKS: EmailBlock[] = [
     brandName: "Aeris Beauté",
     showMark: true,
     logoUrl: "",
-    style: { align: "center", fontFamily: "sans", fontSize: 18, fontWeight: 600 },
+    style: {
+      align: "center",
+      fontFamily: "sans",
+      fontSize: 18,
+      fontWeight: 600,
+      color: EMAIL_CREAM_DEFAULT,
+      backgroundColor: EMAIL_BRAND_DEFAULT,
+    },
   },
   {
     id: "b_heading",
@@ -235,7 +264,14 @@ export const DEFAULT_LEAD_WELCOME_BLOCKS: EmailBlock[] = [
     id: "b_discount",
     type: "discount",
     label: "Kode diskon Anda",
-    style: { align: "center", fontFamily: "sans" },
+    style: {
+      align: "center",
+      fontFamily: "sans",
+      color: "#8a7e72",
+      backgroundColor: EMAIL_CREAM_DEFAULT,
+      borderColor: EMAIL_BRAND_DEFAULT,
+      codeColor: EMAIL_BRAND_DEFAULT,
+    },
   },
   {
     id: "b_closing",
@@ -338,7 +374,14 @@ export function legacyFieldsToBlocks(input: {
     brandName: input.brandName || "Aeris Beauté",
     showMark: true,
     logoUrl: "",
-    style: { align: "center", fontFamily: "sans", fontSize: 18, fontWeight: 600 },
+    style: {
+      align: "center",
+      fontFamily: "sans",
+      fontSize: 18,
+      fontWeight: 600,
+      color: EMAIL_CREAM_DEFAULT,
+      backgroundColor: EMAIL_BRAND_DEFAULT,
+    },
   });
   blocks.push({
     id: newBlockId(),
@@ -373,7 +416,14 @@ export function legacyFieldsToBlocks(input: {
       id: newBlockId(),
       type: "discount",
       label: input.discountLabel || "Kode diskon Anda",
-      style: { align: "center", fontFamily: "sans" },
+      style: {
+        align: "center",
+        fontFamily: "sans",
+        color: "#8a7e72",
+        backgroundColor: EMAIL_CREAM_DEFAULT,
+        borderColor: EMAIL_BRAND_DEFAULT,
+        codeColor: EMAIL_BRAND_DEFAULT,
+      },
     });
   }
   if (input.closingText.trim()) {

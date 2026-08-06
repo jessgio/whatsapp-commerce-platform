@@ -8,13 +8,17 @@ import {
 import type { EmailCustomFont } from "@/lib/email-fonts";
 import {
   BUILTIN_FONTS,
+  EMAIL_BRAND_DEFAULT,
+  EMAIL_CREAM_DEFAULT,
   EMAIL_FONT_LABELS,
   FONT_SIZE_PRESETS,
   type BuiltinEmailFont,
   type EmailAlign,
   type EmailButtonStyle,
+  type EmailDiscountStyle,
   type EmailDividerStyle,
   type EmailFontWeight,
+  type EmailHeaderStyle,
   type EmailImageStyle,
   type EmailTextStyle,
 } from "@/lib/email-style";
@@ -60,7 +64,7 @@ function AlignToggle({
   );
 }
 
-function ColorField({
+export function ColorField({
   label,
   value,
   fallback,
@@ -443,6 +447,63 @@ export function DividerStyleControls({
           </select>
         </div>
       </div>
+    </div>
+  );
+}
+
+export function HeaderChromeControls({
+  style,
+  onChange,
+}: {
+  style: EmailHeaderStyle | undefined;
+  onChange: (next: EmailHeaderStyle) => void;
+}) {
+  const s = style ?? {};
+  return (
+    <div className="space-y-2.5 rounded-lg border border-border bg-surface-muted/30 p-3">
+      <p className="text-xs font-semibold text-foreground">Header chrome</p>
+      <ColorField
+        label="Background"
+        value={s.backgroundColor}
+        fallback={EMAIL_BRAND_DEFAULT}
+        onChange={(backgroundColor) => onChange({ ...s, backgroundColor })}
+      />
+    </div>
+  );
+}
+
+export function DiscountChromeControls({
+  style,
+  onChange,
+}: {
+  style: EmailDiscountStyle | undefined;
+  onChange: (next: EmailDiscountStyle) => void;
+}) {
+  const s = style ?? {};
+  const patch = (partial: Partial<EmailDiscountStyle>) =>
+    onChange({ ...s, ...partial });
+
+  return (
+    <div className="space-y-2.5 rounded-lg border border-border bg-surface-muted/30 p-3">
+      <p className="text-xs font-semibold text-foreground">Discount chrome</p>
+      <ColorField
+        label="Code color"
+        value={s.codeColor}
+        fallback={EMAIL_BRAND_DEFAULT}
+        onChange={(codeColor) => patch({ codeColor })}
+      />
+      <ColorField
+        label="Background"
+        value={s.backgroundColor}
+        fallback={EMAIL_CREAM_DEFAULT}
+        onChange={(backgroundColor) => patch({ backgroundColor })}
+      />
+      <ColorField
+        label="Border"
+        value={s.borderColor}
+        fallback={EMAIL_BRAND_DEFAULT}
+        onChange={(borderColor) => patch({ borderColor })}
+      />
     </div>
   );
 }

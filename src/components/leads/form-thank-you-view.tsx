@@ -10,8 +10,11 @@ import {
 } from "@/lib/email-templates";
 import {
   clampFontSize,
+  EMAIL_BRAND_DEFAULT,
+  EMAIL_CREAM_DEFAULT,
   isHexColor,
   resolveFontFamily,
+  resolveHexColor,
   textStyleToCss,
 } from "@/lib/email-style";
 import type { FormThankYou } from "@/lib/form-templates";
@@ -44,11 +47,27 @@ function renderBlock(
         color: base.charcoal,
       });
       if (!showLogo && !showLetterMark && !showBrandName) return null;
+      const markBg = resolveHexColor(
+        block.style?.backgroundColor,
+        EMAIL_BRAND_DEFAULT,
+      );
+      const headerBg = isHexColor(block.style?.backgroundColor)
+        ? block.style!.backgroundColor!.trim()
+        : undefined;
       return (
         <div
           key={block.id}
           className="mb-5 flex flex-col items-center gap-2 px-1"
-          style={{ textAlign: brandCss.textAlign }}
+          style={{
+            textAlign: brandCss.textAlign,
+            ...(headerBg
+              ? {
+                  backgroundColor: headerBg,
+                  borderRadius: 12,
+                  padding: "20px 16px",
+                }
+              : {}),
+          }}
         >
           {showLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -61,7 +80,7 @@ function renderBlock(
           {showLetterMark ? (
             <span
               className="inline-flex size-10 items-center justify-center rounded-full text-sm font-semibold text-white"
-              style={{ backgroundColor: accent }}
+              style={{ backgroundColor: markBg }}
             >
               A
             </span>
@@ -167,6 +186,18 @@ function renderBlock(
         color: base.muted,
         letterSpacing: 0.12,
       });
+      const borderColor = resolveHexColor(
+        block.style?.borderColor,
+        EMAIL_BRAND_DEFAULT,
+      );
+      const cardBg = resolveHexColor(
+        block.style?.backgroundColor,
+        EMAIL_CREAM_DEFAULT,
+      );
+      const codeColor = resolveHexColor(
+        block.style?.codeColor,
+        EMAIL_BRAND_DEFAULT,
+      );
       return (
         <a
           key={block.id}
@@ -175,8 +206,8 @@ function renderBlock(
           rel="noopener noreferrer"
           className="mt-6 mb-2 block rounded-xl border border-dashed px-4 py-6 transition-colors hover:opacity-95"
           style={{
-            borderColor: `${accent}66`,
-            backgroundColor: `${accent}0d`,
+            borderColor,
+            backgroundColor: cardBg,
             textAlign: align,
           }}
         >
@@ -192,7 +223,7 @@ function renderBlock(
           <p
             className="mt-2 font-mono text-3xl font-semibold tracking-[0.18em]"
             style={{
-              color: accent,
+              color: codeColor,
               fontFamily: resolveFontFamily("mono", "mono"),
               textAlign: align,
               margin: "8px 0 0",

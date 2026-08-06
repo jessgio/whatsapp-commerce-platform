@@ -1,4 +1,5 @@
 import { isEmailBlock, newBlockId, type EmailBlock } from "@/lib/email-blocks";
+import { EMAIL_BRAND_DEFAULT, EMAIL_CREAM_DEFAULT } from "@/lib/email-style";
 import { LEAD_DISCOUNT_CODE } from "@/lib/lead-offer";
 
 export const QR_LEAD_FORM_TEMPLATE_ID = "qr_lead";
@@ -219,6 +220,7 @@ export function defaultThankYouBlocks(): EmailBlock[] {
         fontFamily: "sans",
         fontSize: 18,
         fontWeight: 600,
+        color: EMAIL_BRAND_DEFAULT,
       },
     },
     {
@@ -269,7 +271,14 @@ export function defaultThankYouBlocks(): EmailBlock[] {
       id: "ty_discount",
       type: "discount",
       label: "Kode diskon Anda",
-      style: { align: "center", fontFamily: "sans" },
+      style: {
+        align: "center",
+        fontFamily: "sans",
+        color: "#8a7e72",
+        backgroundColor: EMAIL_CREAM_DEFAULT,
+        borderColor: EMAIL_BRAND_DEFAULT,
+        codeColor: EMAIL_BRAND_DEFAULT,
+      },
     },
     {
       id: "ty_inbox",

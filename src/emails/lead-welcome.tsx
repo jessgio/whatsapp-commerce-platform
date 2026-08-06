@@ -12,8 +12,11 @@ import {
 } from "@/lib/email-templates";
 import {
   clampFontSize,
+  EMAIL_BRAND_DEFAULT,
+  EMAIL_CREAM_DEFAULT,
   isHexColor,
   resolveFontFamily,
+  resolveHexColor,
   textStyleToCss,
 } from "@/lib/email-style";
 
@@ -64,11 +67,15 @@ function renderBlock(
         customFonts,
       );
       const align = brandCss.textAlign ?? "center";
+      const headerBg = resolveHexColor(
+        block.style?.backgroundColor,
+        EMAIL_BRAND_DEFAULT,
+      );
       return (
         <div
           key={block.id}
           style={{
-            backgroundColor: accent,
+            backgroundColor: headerBg,
             padding: "28px 32px",
             textAlign: align,
           }}
@@ -259,12 +266,24 @@ function renderBlock(
         },
         customFonts,
       );
+      const cardBg = resolveHexColor(
+        block.style?.backgroundColor,
+        EMAIL_CREAM_DEFAULT,
+      );
+      const borderColor = resolveHexColor(
+        block.style?.borderColor,
+        EMAIL_BRAND_DEFAULT,
+      );
+      const codeColor = resolveHexColor(
+        block.style?.codeColor,
+        EMAIL_BRAND_DEFAULT,
+      );
       return (
         <div key={block.id} style={{ padding: "8px 32px 16px" }}>
           <div
             style={{
-              border: `1px dashed ${accent}`,
-              backgroundColor: "#fbf6ee",
+              border: `1px dashed ${borderColor}`,
+              backgroundColor: cardBg,
               borderRadius: 12,
               padding: "20px 16px",
               textAlign: align,
@@ -286,7 +305,7 @@ function renderBlock(
                 fontSize: 28,
                 fontWeight: 700,
                 letterSpacing: "0.18em",
-                color: accent,
+                color: codeColor,
                 fontFamily: resolveFontFamily("mono", "mono", customFonts),
                 textAlign: align,
               }}

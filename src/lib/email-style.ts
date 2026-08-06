@@ -42,6 +42,19 @@ export type EmailTextStyle = {
   letterSpacing?: number;
 };
 
+/** Brand header chrome — background is independent of template accent. */
+export type EmailHeaderStyle = EmailTextStyle & {
+  backgroundColor?: string;
+};
+
+/** Discount card chrome — label uses `color`; code/border/bg are separate. */
+export type EmailDiscountStyle = EmailTextStyle & {
+  backgroundColor?: string;
+  borderColor?: string;
+  /** Voucher code color (not the label). */
+  codeColor?: string;
+};
+
 export type EmailButtonStyle = EmailTextStyle & {
   backgroundColor?: string;
   borderRadius?: number;
@@ -98,6 +111,18 @@ export function resolveFontFamily(
 
 export function isHexColor(value: string | undefined): boolean {
   return Boolean(value && /^#[0-9A-Fa-f]{6}$/.test(value.trim()));
+}
+
+/** Brand merlot — used as per-block defaults so accent can change independently. */
+export const EMAIL_BRAND_DEFAULT = "#6f2c3f";
+export const EMAIL_CREAM_DEFAULT = "#fbf6ee";
+
+export function resolveHexColor(
+  value: string | undefined | null,
+  fallback: string,
+): string {
+  const trimmed = value?.trim();
+  return isHexColor(trimmed) ? trimmed! : fallback;
 }
 
 export function textStyleToCss(

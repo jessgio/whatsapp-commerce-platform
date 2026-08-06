@@ -4,7 +4,9 @@ import * as React from "react";
 import { ImagePlus, Trash2 } from "lucide-react";
 import {
   ButtonStyleControls,
+  DiscountChromeControls,
   DividerStyleControls,
+  HeaderChromeControls,
   ImageStyleControls,
   TextStyleControls,
 } from "@/components/settings/email-style-controls";
@@ -148,16 +150,23 @@ export function EmailInspector({
             </InspectorField>
           ) : null}
 
-          <EditorColorInput
-            label="Accent color"
-            value={doc.accentColor}
-            onChange={(accentColor) => onChangeDoc({ accentColor })}
-          />
+          <div>
+            <EditorColorInput
+              label="Accent color"
+              value={doc.accentColor}
+              onChange={(accentColor) => onChangeDoc({ accentColor })}
+            />
+            <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
+              Used for markdown links and buttons without their own background.
+              Header and discount colors are set on each block.
+            </p>
+          </div>
         </InspectorSection>
 
         <InspectorSection title="Tips">
           <p className="text-[11px] leading-relaxed text-muted">
-            Click any block on the canvas to edit it. Placeholders{" "}
+            Click any block on the canvas to edit its own colors and typography.
+            Placeholders{" "}
             <Chip>{"{name}"}</Chip>
             {variant === "email" ? (
               <>
@@ -252,9 +261,21 @@ export function EmailInspector({
           </InspectorSection>
 
           <InspectorSection>
-            <TextStyleControls
+            <HeaderChromeControls
               style={block.style}
               onChange={(style) => onChangeBlock({ ...block, style })}
+            />
+          </InspectorSection>
+
+          <InspectorSection>
+            <TextStyleControls
+              style={block.style}
+              onChange={(style) =>
+                onChangeBlock({
+                  ...block,
+                  style: { ...block.style, ...style },
+                })
+              }
               defaults={{
                 fontFamily: "sans",
                 fontSize: 18,
@@ -423,9 +444,21 @@ export function EmailInspector({
           </InspectorSection>
 
           <InspectorSection>
-            <TextStyleControls
+            <DiscountChromeControls
               style={block.style}
               onChange={(style) => onChangeBlock({ ...block, style })}
+            />
+          </InspectorSection>
+
+          <InspectorSection>
+            <TextStyleControls
+              style={block.style}
+              onChange={(style) =>
+                onChangeBlock({
+                  ...block,
+                  style: { ...block.style, ...style },
+                })
+              }
               defaults={{
                 fontFamily: "sans",
                 fontSize: 11,
