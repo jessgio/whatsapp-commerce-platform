@@ -61,6 +61,7 @@ export function Select({
     left: number;
     width: number;
     maxHeight: number;
+    openUp: boolean;
   } | null>(null);
 
   const flat = flatten(options);
@@ -80,6 +81,7 @@ export function Select({
       left: rect.left,
       width: Math.max(rect.width, 140),
       maxHeight,
+      openUp,
     });
   }
 
@@ -137,9 +139,7 @@ export function Select({
               left: coords.left,
               width: coords.width,
               maxHeight: coords.maxHeight,
-              transform: coords.top < (buttonRef.current?.getBoundingClientRect().bottom ?? 0)
-                ? "translateY(-100%)"
-                : undefined,
+              transform: coords.openUp ? "translateY(-100%)" : undefined,
               zIndex: 80,
             }}
             className="overflow-y-auto rounded-lg border border-border bg-surface py-1 shadow-[0_8px_30px_rgba(45,43,42,0.12)]"
