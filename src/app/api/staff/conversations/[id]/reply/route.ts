@@ -11,7 +11,9 @@ export async function POST(
     const ctx = await requireStaffApiUser(request, "inbox.reply");
     const body = (await request.json().catch(() => null)) as { body?: string } | null;
     const text = String(body?.body ?? "");
-    const result = await withStaffDataContext(ctx, () => sendConversationReply(id, text));
+    const result = await withStaffDataContext(ctx, () =>
+      sendConversationReply(id, text, { actorId: ctx.user.id }),
+    );
     if (!result.ok) return jsonError(400, result.error ?? "Send failed.");
     return jsonOk({ ok: true });
   } catch (err) {

@@ -60,7 +60,7 @@ node scripts/smoke-staff-api.mjs   # API smoke (needs STAFF_API_ALLOW_DEMO or de
 ## Modules
 
 - **CRM** — customers keyed off `wa_id`, consent ledger, saved addresses (reused per order), segments, profiles.
-- **Inbox** — live WhatsApp conversations, assignment, 24h-window indicator, reply composer (mobile list↔thread).
+- **Inbox** — live WhatsApp conversations, least-loaded CS routing, assignment/claim, 24h-window indicator, reply composer (mobile list↔thread).
 - **Catalog & Pricing** — SKUs, prices, discounts, push to WhatsApp catalog.
 - **Orders (OMS)** — WA-cart & agent orders, lifecycle, payment links, issue flags, warehouse notices.
 - **Warehouse (WMS)** — fulfillment queue, stock health, notices.

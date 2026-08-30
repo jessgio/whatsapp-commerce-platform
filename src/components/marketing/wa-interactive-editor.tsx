@@ -19,7 +19,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Button, Select } from "@/components/ui";
 import { WaInteractivePhonePreview } from "@/components/marketing/wa-phone-preview";
 import { cn } from "@/lib/utils";
 import {
@@ -158,18 +158,19 @@ export function WaInteractiveEditor({
             </div>
             <div>
               <label className="text-sm font-medium">Message type</label>
-              <select
-                className={fieldClass}
+              <Select
+                className="mt-1 w-full"
                 value={design.kind}
-                onChange={(e) =>
-                  patch({ kind: e.target.value as WaInteractiveKind })
+                onChange={(v) =>
+                  patch({ kind: v as WaInteractiveKind })
                 }
-              >
-                <option value="text">Text</option>
-                <option value="image">Image + caption</option>
-                <option value="reply_buttons">Reply buttons</option>
-                <option value="list">List menu</option>
-              </select>
+                options={[
+                  { value: "text", label: "Text" },
+                  { value: "image", label: "Image + caption" },
+                  { value: "reply_buttons", label: "Reply buttons" },
+                  { value: "list", label: "List menu" },
+                ]}
+              />
             </div>
           </div>
         </div>

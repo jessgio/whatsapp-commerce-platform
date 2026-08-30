@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createCartOrderFromInbound } from "@/lib/checkout-order";
 import { parseWhatsAppOrder } from "@/lib/checkout";
 import { isSupabaseConfigured } from "@/lib/env";
+import { routeIfUnassigned } from "@/lib/services/cs-routing";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import {
   parseInbound,
@@ -101,12 +102,19 @@ export async function POST(req: NextRequest) {
         },
         { onConflict: "customer_id" },
       )
-      .select("id")
+      .select("id, assignee_id")
       .single();
 
     if (convErr || !conv) {
       console.error("[webhook:whatsapp] conversation upsert failed", convErr);
       continue;
+    }
+
+    if (!conv.assignee_id) {
+      const routed = await routeIfUnassigned(conv.id, { mode: "admin" });
+      if (!routed.ok) {
+        console.error("[webhook:whatsapp] CS routing failed", routed.error);
+      }
     }
 
     const isOrder = msg.type === "order" && Boolean(parseWhatsAppOrder(msg.raw));

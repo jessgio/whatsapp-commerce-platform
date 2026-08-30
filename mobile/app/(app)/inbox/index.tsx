@@ -80,6 +80,9 @@ export default function InboxListScreen() {
               <Text style={[styles.pill, mins > 0 ? styles.pillOk : styles.pillBad]}>
                 {mins > 0 ? `${Math.floor(mins / 60)}h window` : "Window closed"}
               </Text>
+              <Text style={styles.assignee}>
+                {item.assigneeName ?? "Unassigned"}
+              </Text>
             </View>
           </Pressable>
         );
@@ -124,6 +127,7 @@ const styles = StyleSheet.create({
   },
   pillOk: { backgroundColor: "#e6f2ea", color: colors.success },
   pillBad: { backgroundColor: "#f8e6e6", color: colors.danger },
+  assignee: { fontSize: 11, color: colors.muted },
   empty: { textAlign: "center", color: colors.muted, marginTop: 40 },
   error: { color: colors.danger, marginBottom: 8, fontSize: 13 },
 });

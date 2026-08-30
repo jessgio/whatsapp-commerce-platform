@@ -61,6 +61,16 @@ export async function sendReply(id: string, body: string) {
   });
 }
 
+export async function assignConversation(
+  id: string,
+  payload: { assigneeId?: string | null; claim?: boolean },
+) {
+  return staffFetch<{ ok: boolean }>(`/api/staff/conversations/${id}/assign`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function fetchOrders() {
   return staffFetch<{ orders: Order[] }>("/api/staff/orders");
 }

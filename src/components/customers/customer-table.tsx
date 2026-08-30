@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Search } from "lucide-react";
-import { Avatar, Table, Th, Td } from "@/components/ui";
+import { Avatar, Select, Table, Th, Td } from "@/components/ui";
 import { ConsentBadge } from "@/components/status";
 import { formatIDRCompact, formatDate, formatDateTime } from "@/lib/format";
 import { customerMatchesRules, type SegmentDefinition } from "@/lib/segments";
@@ -72,27 +72,25 @@ export function CustomerTable({
             className="w-full rounded-lg border border-border bg-surface py-2 pl-9 pr-3 text-sm outline-none focus:border-merlot"
           />
         </div>
-        <select
+        <Select
           value={segment}
-          onChange={(e) => setSegment(e.target.value)}
-          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-merlot"
-        >
-          <option value="all">All customers</option>
-          {segments.length > 0 && (
-            <optgroup label="Saved segments">
-              {segments.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </optgroup>
-          )}
-          <optgroup label="Legacy labels">
-            <option value="VIP">VIP</option>
-            <option value="Repeat">Repeat</option>
-            <option value="New">New</option>
-          </optgroup>
-        </select>
+          onChange={setSegment}
+          className="w-52"
+          options={[
+            { value: "all", label: "All customers" },
+            ...(segments.length
+              ? [{ label: "Saved segments", options: segments.map((s) => ({ value: s.id, label: s.name })) }]
+              : []),
+            {
+              label: "Legacy labels",
+              options: [
+                { value: "VIP", label: "VIP" },
+                { value: "Repeat", label: "Repeat" },
+                { value: "New", label: "New" },
+              ],
+            },
+          ]}
+        />
         <Link
           href="/customers/segments"
           className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-merlot hover:bg-surface-muted"

@@ -49,6 +49,17 @@ const advance = await req(`/api/staff/orders/${target.id}/advance`, {
 assert(advance.status === 200 && advance.data.ok, `sales advance failed: ${JSON.stringify(advance.data)}`);
 
 const cid = convs.data.conversations[0].id;
+const unassigned = convs.data.conversations.find(
+  (c) => !c.assigneeId && c.status !== "resolved",
+);
+if (unassigned) {
+  const claimed = await req(`/api/staff/conversations/${unassigned.id}/assign`, {
+    method: "POST",
+    body: { claim: true },
+  });
+  assert(claimed.status === 200 && claimed.data.ok, `claim failed: ${JSON.stringify(claimed.data)}`);
+}
+
 const reply = await req(`/api/staff/conversations/${cid}/reply`, {
   method: "POST",
   body: { body: "Smoke test reply from scripts/smoke-staff-api.mjs" },

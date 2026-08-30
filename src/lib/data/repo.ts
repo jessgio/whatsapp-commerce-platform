@@ -15,10 +15,13 @@ import {
   DEMO_PACK_SESSIONS,
   DEMO_PRODUCTS,
   DEMO_SHIPMENTS,
+  DEMO_USERS,
+  assignDemoConversation,
   demoMessages,
 } from "@/lib/demo/data";
 import type {
   Address,
+  AppUser,
   Conversation,
   Customer,
   Message,
@@ -26,6 +29,7 @@ import type {
   PackScanLog,
   PackSession,
   Product,
+  Role,
   Shipment,
   ShipmentEvent,
   SupportCase,
@@ -187,9 +191,20 @@ export async function listRecentInboundByCustomer(
   );
 }
 
-export async function getConversation(id: string): Promise<Conversation | null> {
+export type DataClientMode = "session" | "admin";
+
+async function supabaseClientFor(mode: DataClientMode) {
+  return mode === "admin"
+    ? createSupabaseAdminClient()
+    : await createSupabaseServerClient();
+}
+
+export async function getConversation(
+  id: string,
+  mode: DataClientMode = "session",
+): Promise<Conversation | null> {
   if (shouldUseSupabaseData()) {
-    const supabase = await createSupabaseServerClient();
+    const supabase = await supabaseClientFor(mode);
     const res = await supabase
       .from("conversations")
       .select(
@@ -201,6 +216,71 @@ export async function getConversation(id: string): Promise<Conversation | null> 
     return row ? mapConversation(row) : null;
   }
   return DEMO_CONVERSATIONS.find((c) => c.id === id) ?? null;
+}
+
+export async function listStaffUsers(
+  mode: DataClientMode = "session",
+): Promise<AppUser[]> {
+  if (shouldUseSupabaseData()) {
+    const supabase = await supabaseClientFor(mode);
+    const res = await supabase
+      .from("users")
+      .select("id, name, email, role, avatar_color")
+      .order("name");
+    return liveRows("listStaffUsers", res).map(mapUser);
+  }
+  return DEMO_USERS;
+}
+
+/** Open (non-resolved) conversation counts keyed by assignee id. */
+export async function countOpenConversationsByAssignee(
+  mode: DataClientMode = "session",
+): Promise<Map<string, number>> {
+  if (shouldUseSupabaseData()) {
+    const supabase = await supabaseClientFor(mode);
+    const res = await supabase
+      .from("conversations")
+      .select("assignee_id")
+      .neq("status", "resolved")
+      .not("assignee_id", "is", null);
+    const counts = new Map<string, number>();
+    for (const row of liveRows("countOpenConversationsByAssignee", res)) {
+      const id = row.assignee_id as string | null;
+      if (!id) continue;
+      counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+    return counts;
+  }
+  const counts = new Map<string, number>();
+  for (const conv of DEMO_CONVERSATIONS) {
+    if (conv.status === "resolved" || !conv.assigneeId) continue;
+    counts.set(conv.assigneeId, (counts.get(conv.assigneeId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export async function updateConversationAssignee(
+  conversationId: string,
+  assigneeId: string | null,
+  options?: { onlyIfUnassigned?: boolean; mode?: DataClientMode },
+): Promise<boolean> {
+  const mode = options?.mode ?? "session";
+  if (shouldUseSupabaseData()) {
+    const supabase = await supabaseClientFor(mode);
+    let query = supabase
+      .from("conversations")
+      .update({ assignee_id: assigneeId })
+      .eq("id", conversationId);
+    if (options?.onlyIfUnassigned) {
+      query = query.is("assignee_id", null);
+    }
+    const res = await query.select("id");
+    const rows = liveRows("updateConversationAssignee", res);
+    return rows.length > 0;
+  }
+  return assignDemoConversation(conversationId, assigneeId, {
+    onlyIfUnassigned: options?.onlyIfUnassigned,
+  });
 }
 
 export async function listMessages(conversationId: string): Promise<Message[]> {
@@ -694,6 +774,22 @@ function mapProduct(r: any): Product {
     catalogSync: r.catalog_sync ?? "pending",
     units30d: r.units_30d ?? 0,
     unitsPrev30d: r.units_prev_30d ?? 0,
+  };
+}
+
+function mapUser(r: {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  avatar_color?: string | null;
+}): AppUser {
+  return {
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    role: r.role as Role,
+    avatarColor: r.avatar_color ?? "#6f2c3f",
   };
 }
 

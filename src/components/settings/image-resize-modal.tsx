@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui";
+import { Button, Select } from "@/components/ui";
 import { formatBytes, resizeImageFile } from "@/lib/image-resize";
 
 const PRESETS = [
@@ -227,17 +227,18 @@ export function ImageResizeModal({ file, onCancel, onConfirm }: Props) {
 
             <label className="block text-xs font-medium text-foreground">
               Format
-              <select
-                className="mt-1.5 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+              <Select
+                className="mt-1.5 w-full"
                 value={format}
-                onChange={(e) =>
-                  setFormat(e.target.value as "image/jpeg" | "image/png" | "image/webp")
+                onChange={(v) =>
+                  setFormat(v as "image/jpeg" | "image/png" | "image/webp")
                 }
-              >
-                <option value="image/jpeg">JPEG (best for photos / email)</option>
-                <option value="image/webp">WebP</option>
-                <option value="image/png">PNG (graphics, no quality slider)</option>
-              </select>
+                options={[
+                  { value: "image/jpeg", label: "JPEG (best for photos / email)" },
+                  { value: "image/webp", label: "WebP" },
+                  { value: "image/png", label: "PNG (graphics, no quality slider)" },
+                ]}
+              />
             </label>
           </div>
         )}

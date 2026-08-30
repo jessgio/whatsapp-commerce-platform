@@ -11,7 +11,7 @@ export function InboxPane({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={cn(
-        "min-h-0 min-w-0 flex-1",
+        "min-h-0 min-w-0 flex-1 overflow-hidden",
         conversationSelected ? "flex flex-col" : "hidden md:flex md:flex-col",
       )}
     >

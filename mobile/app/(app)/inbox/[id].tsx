@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { fetchConversation, sendReply } from "../../../lib/api";
+import { fetchConversation, sendReply, assignConversation } from "../../../lib/api";
 import { useAuth } from "../../../lib/auth";
 import { formatDateTime, windowMinutesLeft } from "../../../lib/format";
 import type { Conversation, Message } from "../../../lib/types";
@@ -19,12 +19,13 @@ import { colors } from "../../../lib/theme";
 
 export default function ConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<FlatList<Message>>(null);
 
@@ -55,6 +56,20 @@ export default function ConversationScreen() {
 
   const mins = windowMinutesLeft(conversation?.lastInboundAt ?? null);
   const windowOpen = mins > 0;
+
+  async function onClaim() {
+    if (!id || !can("inbox.reply")) return;
+    setClaiming(true);
+    setError(null);
+    try {
+      await assignConversation(id, { claim: true });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Claim failed.");
+    } finally {
+      setClaiming(false);
+    }
+  }
 
   async function onSend() {
     if (!id || !body.trim() || !can("inbox.reply")) return;
@@ -91,7 +106,19 @@ export default function ConversationScreen() {
         <Text style={styles.sub}>
           +{conversation?.customerWaId} ·{" "}
           {windowOpen ? `${Math.floor(mins / 60)}h ${mins % 60}m left` : "24h window closed"}
+          {conversation?.assigneeName
+            ? ` · ${conversation.assigneeId === user?.id ? "You" : conversation.assigneeName}`
+            : " · Unassigned"}
         </Text>
+        {conversation && conversation.assigneeId !== user?.id && can("inbox.reply") ? (
+          <Pressable
+            style={[styles.claim, claiming && styles.disabled]}
+            disabled={claiming}
+            onPress={onClaim}
+          >
+            <Text style={styles.claimText}>{claiming ? "Claiming…" : "Claim"}</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -153,6 +180,15 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 16, fontWeight: "700", color: colors.foreground },
   sub: { marginTop: 2, fontSize: 12, color: colors.muted },
+  claim: {
+    alignSelf: "flex-start",
+    marginTop: 8,
+    backgroundColor: colors.merlot,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  claimText: { color: "#fff", fontSize: 12, fontWeight: "700" },
   thread: { padding: 12, paddingBottom: 20 },
   bubble: {
     maxWidth: "82%",

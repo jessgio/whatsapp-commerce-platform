@@ -19,7 +19,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Button, Select } from "@/components/ui";
 import { WaTemplatePhonePreview } from "@/components/marketing/wa-phone-preview";
 import { cn } from "@/lib/utils";
 import {
@@ -76,11 +76,11 @@ function SortableButtonRow({
           <div className="grid gap-2 sm:grid-cols-2">
             <div>
               <label className="text-xs font-medium text-muted">Type</label>
-              <select
-                className={fieldClass}
+              <Select
+                className="mt-1 w-full"
                 value={button.type}
-                onChange={(e) => {
-                  const type = e.target.value as WaTemplateButton["type"];
+                onChange={(v) => {
+                  const type = v as WaTemplateButton["type"];
                   if (type === "quick_reply") {
                     onChange({ id: button.id, type, text: button.text });
                   } else if (type === "url") {
@@ -99,11 +99,12 @@ function SortableButtonRow({
                     });
                   }
                 }}
-              >
-                <option value="quick_reply">Quick reply</option>
-                <option value="url">URL</option>
-                <option value="phone">Phone</option>
-              </select>
+                options={[
+                  { value: "quick_reply", label: "Quick reply" },
+                  { value: "url", label: "URL" },
+                  { value: "phone", label: "Phone" },
+                ]}
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted">Label</label>
@@ -241,17 +242,18 @@ export function WaTemplateEditor({
             </div>
             <div>
               <label className="text-sm font-medium">Category</label>
-              <select
-                className={fieldClass}
+              <Select
+                className="mt-1 w-full"
                 value={design.category}
-                onChange={(e) =>
-                  patch({ category: e.target.value as WaTemplateCategory })
+                onChange={(v) =>
+                  patch({ category: v as WaTemplateCategory })
                 }
-              >
-                <option value="MARKETING">Marketing</option>
-                <option value="UTILITY">Utility</option>
-                <option value="AUTHENTICATION">Authentication</option>
-              </select>
+                options={[
+                  { value: "MARKETING", label: "Marketing" },
+                  { value: "UTILITY", label: "Utility" },
+                  { value: "AUTHENTICATION", label: "Authentication" },
+                ]}
+              />
             </div>
           </div>
         </div>
@@ -261,21 +263,22 @@ export function WaTemplateEditor({
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
               <label className="text-sm font-medium">Type</label>
-              <select
-                className={fieldClass}
+              <Select
+                className="mt-1 w-full"
                 value={design.header.type}
-                onChange={(e) => {
-                  const type = e.target.value as WaTemplateHeader["type"];
+                onChange={(v) => {
+                  const type = v as WaTemplateHeader["type"];
                   if (type === "none") setHeader({ type: "none" });
                   else if (type === "text")
                     setHeader({ type: "text", text: "Aeris Beauté" });
                   else setHeader({ type: "image", imageUrl: "" });
                 }}
-              >
-                <option value="none">None</option>
-                <option value="text">Text</option>
-                <option value="image">Image</option>
-              </select>
+                options={[
+                  { value: "none", label: "None" },
+                  { value: "text", label: "Text" },
+                  { value: "image", label: "Image" },
+                ]}
+              />
             </div>
             {design.header.type === "text" ? (
               <div>

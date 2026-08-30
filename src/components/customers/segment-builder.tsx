@@ -7,7 +7,7 @@ import {
   previewSegmentCountAction,
   saveSegmentAction,
 } from "@/app/(portal)/customers/segments/actions";
-import { Button } from "@/components/ui";
+import { Button, Select } from "@/components/ui";
 import {
   OPS_BY_FIELD,
   OP_LABELS,
@@ -137,20 +137,21 @@ export function SegmentBuilder({
               Members are computed live from customer data — nothing is baked in.
             </p>
           </div>
-          <select
+          <Select
             value={rules.match}
             disabled={!canEdit}
-            onChange={(e) =>
+            onChange={(v) =>
               setRules((prev) => ({
                 ...prev,
-                match: e.target.value as SegmentRules["match"],
+                match: v as SegmentRules["match"],
               }))
             }
-            className={inputClass}
-          >
-            <option value="all">Match all conditions</option>
-            <option value="any">Match any condition</option>
-          </select>
+            className="w-56"
+            options={[
+              { value: "all", label: "Match all conditions" },
+              { value: "any", label: "Match any condition" },
+            ]}
+          />
         </div>
 
         <div className="space-y-3">
@@ -249,46 +250,40 @@ function ConditionRow({
 
   return (
     <div className="grid gap-2 rounded-xl border border-border bg-background/60 p-3 sm:grid-cols-[1.2fr_1fr_1.4fr_auto]">
-      <select
+      <Select
         value={condition.field}
         disabled={!canEdit}
-        onChange={(e) => onField(e.target.value as SegmentField)}
-        className={inputClass}
-      >
-        {SEGMENT_FIELD_OPTIONS.map((f) => (
-          <option key={f.value} value={f.value}>
-            {f.label}
-          </option>
-        ))}
-      </select>
+        onChange={(v) => onField(v as SegmentField)}
+        options={SEGMENT_FIELD_OPTIONS.map((f) => ({
+          value: f.value,
+          label: f.label,
+        }))}
+      />
 
-      <select
+      <Select
         value={condition.op}
         disabled={!canEdit}
-        onChange={(e) => onOp(e.target.value as SegmentOp)}
-        className={inputClass}
-      >
-        {ops.map((op) => (
-          <option key={op} value={op}>
-            {OP_LABELS[op]}
-          </option>
-        ))}
-      </select>
+        onChange={(v) => onOp(v as SegmentOp)}
+        options={ops.map((op) => ({
+          value: op,
+          label: OP_LABELS[op],
+        }))}
+      />
 
       <div>
         {!needsValue ? (
           <p className="px-1 py-2 text-xs text-muted">No value needed</p>
         ) : condition.field === "consent_status" ? (
-          <select
+          <Select
             value={String(condition.value ?? "opted_in")}
             disabled={!canEdit}
-            onChange={(e) => onValue(e.target.value)}
-            className={inputClass}
-          >
-            <option value="opted_in">opted_in</option>
-            <option value="pending">pending</option>
-            <option value="opted_out">opted_out</option>
-          </select>
+            onChange={onValue}
+            options={[
+              { value: "opted_in", label: "opted_in" },
+              { value: "pending", label: "pending" },
+              { value: "opted_out", label: "opted_out" },
+            ]}
+          />
         ) : isBetween ? (
           <div className="flex items-center gap-2">
             <input

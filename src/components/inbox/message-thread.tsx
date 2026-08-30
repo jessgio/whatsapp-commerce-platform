@@ -36,7 +36,7 @@ export function MessageThread({ messages }: { messages: Message[] }) {
   }, [messages]);
 
   return (
-    <div ref={scrollerRef} className="flex-1 space-y-3 overflow-y-auto bg-background px-4 py-5">
+    <div ref={scrollerRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-background px-4 py-5">
       {messages.map((msg) => (
         <div
           key={msg.id}

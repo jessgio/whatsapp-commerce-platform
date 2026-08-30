@@ -254,6 +254,26 @@ export const DEMO_CONVERSATIONS: Conversation[] = Array.from({ length: 28 }, (_,
 /** Outbound replies appended during demo/staff-demo sessions (process memory). */
 const DEMO_OUTBOUND_EXTRA = new Map<string, Message[]>();
 
+export function assignDemoConversation(
+  conversationId: string,
+  assigneeId: string | null,
+  options?: { onlyIfUnassigned?: boolean },
+): boolean {
+  const conv = DEMO_CONVERSATIONS.find((c) => c.id === conversationId);
+  if (!conv) return false;
+  if (options?.onlyIfUnassigned && conv.assigneeId) return false;
+  if (assigneeId === null) {
+    conv.assigneeId = null;
+    conv.assigneeName = null;
+    return true;
+  }
+  const agent = DEMO_USERS.find((u) => u.id === assigneeId);
+  if (!agent) return false;
+  conv.assigneeId = agent.id;
+  conv.assigneeName = agent.name;
+  return true;
+}
+
 export function appendDemoOutboundMessage(
   conversationId: string,
   body: string,

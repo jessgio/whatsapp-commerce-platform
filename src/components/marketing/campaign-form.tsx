@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/components/ui";
+import { Button, Select } from "@/components/ui";
 import { EmailTemplateEditor } from "@/components/settings/email-template-editor";
 import {
   saveCampaignAction,
@@ -246,29 +246,31 @@ export function CampaignForm({
           </div>
           <div>
             <label className="text-sm font-medium">Channel</label>
-            <select
-              className={fieldClass}
+            <Select
+              className="mt-1 w-full"
               value={channel}
-              onChange={(e) => setChannel(e.target.value as CampaignChannel)}
-            >
-              <option value="whatsapp">WhatsApp</option>
-              <option value="email">Email</option>
-            </select>
+              onChange={(v) => setChannel(v as CampaignChannel)}
+              options={[
+                { value: "whatsapp", label: "WhatsApp" },
+                { value: "email", label: "Email" },
+              ]}
+            />
           </div>
           <div>
             <label className="text-sm font-medium">Segment</label>
-            <select
-              className={fieldClass}
+            <Select
+              className="mt-1 w-full"
               value={segmentId}
-              onChange={(e) => setSegmentId(e.target.value)}
-            >
-              <option value="">Select segment…</option>
-              {segments.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({s.memberCount})
-                </option>
-              ))}
-            </select>
+              onChange={setSegmentId}
+              placeholder="Select segment…"
+              options={[
+                { value: "", label: "Select segment…" },
+                ...segments.map((s) => ({
+                  value: s.id,
+                  label: `${s.name} (${s.memberCount})`,
+                })),
+              ]}
+            />
           </div>
           <div>
             <label className="text-sm font-medium">Schedule</label>
@@ -285,34 +287,34 @@ export function CampaignForm({
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div>
               <label className="text-sm font-medium">WhatsApp mode</label>
-              <select
-                className={fieldClass}
+              <Select
+                className="mt-1 w-full"
                 value={waMode}
-                onChange={(e) => {
-                  setWaMode(e.target.value as CampaignWaMode);
+                onChange={(v) => {
+                  setWaMode(v as CampaignWaMode);
                   setWaDesignId("");
                 }}
-              >
-                <option value="template">Template (broadcast-safe)</option>
-                <option value="interactive">
-                  Interactive (24h window only)
-                </option>
-              </select>
+                options={[
+                  { value: "template", label: "Template (broadcast-safe)" },
+                  { value: "interactive", label: "Interactive (24h window only)" },
+                ]}
+              />
             </div>
             <div>
               <label className="text-sm font-medium">Message design</label>
-              <select
-                className={fieldClass}
+              <Select
+                className="mt-1 w-full"
                 value={waDesignId}
-                onChange={(e) => setWaDesignId(e.target.value)}
-              >
-                <option value="">Select design…</option>
-                {designOptions.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setWaDesignId}
+                placeholder="Select design…"
+                options={[
+                  { value: "", label: "Select design…" },
+                  ...designOptions.map((d) => ({
+                    value: d.id,
+                    label: d.name,
+                  })),
+                ]}
+              />
             </div>
             {waMode === "interactive" ? (
               <p className="sm:col-span-2 text-xs text-warning">
@@ -327,18 +329,19 @@ export function CampaignForm({
               Start from email template
             </label>
             <div className="mt-1 flex flex-wrap gap-2">
-              <select
-                className={cn(fieldClass, "mt-0 max-w-md flex-1")}
+              <Select
+                className="mt-0 max-w-md flex-1"
                 value={emailTemplateId}
-                onChange={(e) => loadLibraryTemplate(e.target.value)}
-              >
-                <option value="">Custom / blank campaign design…</option>
-                {libraryOptions.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
+                onChange={loadLibraryTemplate}
+                placeholder="Custom / blank campaign design…"
+                options={[
+                  { value: "", label: "Custom / blank campaign design…" },
+                  ...libraryOptions.map((t) => ({
+                    value: t.id,
+                    label: t.name,
+                  })),
+                ]}
+              />
               <Link
                 href="/marketing/design/email"
                 className="inline-flex items-center text-xs text-merlot hover:underline"

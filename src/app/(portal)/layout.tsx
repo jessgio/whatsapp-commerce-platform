@@ -18,9 +18,9 @@ export default async function PortalLayout({
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar items={allowedNav} />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Topbar user={user} navItems={allowedNav} />
-        <main className="flex-1 overflow-y-auto px-4 py-5 sm:px-5 sm:py-6 md:px-8">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-5 sm:py-6 md:px-8">{children}</main>
       </div>
     </div>
   );

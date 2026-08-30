@@ -64,31 +64,7 @@ export function FormTemplateTabs({
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
-      {isFunnel ? (
-        <p className="shrink-0 rounded-lg border border-merlot/20 bg-merlot/5 px-3 py-2 text-xs leading-relaxed text-foreground">
-          {QR_LEAD_FUNNEL.funnelBanner}{" "}
-          <Link
-            href={QR_LEAD_FUNNEL.emailPath}
-            className="font-medium text-merlot hover:underline"
-          >
-            Open welcome email alone
-          </Link>
-        </p>
-      ) : (
-        <div className="flex shrink-0 justify-end">
-          <p className="text-xs text-muted">
-            Related welcome email:{" "}
-            <Link
-              href={QR_LEAD_FUNNEL.emailPath}
-              className="text-merlot hover:underline"
-            >
-              edit lead welcome
-            </Link>
-          </p>
-        </div>
-      )}
-
+    <div className="flex h-full min-h-0 flex-col gap-2">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div className="inline-flex rounded-lg border border-border bg-surface p-1">
           {tabs.map(([id, label]) => (
@@ -107,10 +83,21 @@ export function FormTemplateTabs({
             </button>
           ))}
         </div>
+        {!isFunnel ? (
+          <p className="text-xs text-muted">
+            Related welcome email:{" "}
+            <Link
+              href={QR_LEAD_FUNNEL.emailPath}
+              className="text-merlot hover:underline"
+            >
+              edit lead welcome
+            </Link>
+          </p>
+        ) : null}
       </div>
 
       {!canEdit ? (
-        <p className="shrink-0 rounded-lg bg-surface-muted px-3 py-2 text-sm text-muted">
+        <p className="shrink-0 text-xs text-muted">
           You can view this template but need marketing edit permission to save
           changes.
         </p>
@@ -126,7 +113,7 @@ export function FormTemplateTabs({
           initial={template}
           canEdit={canEdit}
           active={tab === "form"}
-          heightClass="min-h-[520px] flex-1"
+          heightClass="h-full min-h-0"
         />
       </div>
 
@@ -146,7 +133,7 @@ export function FormTemplateTabs({
             }}
             readOnly={!canEdit}
             active={tab === "thankyou"}
-            heightClass="min-h-[520px] flex-1"
+            heightClass="h-full min-h-0"
             showNameField={false}
             showSubjectField={false}
             previewVariant="web"
@@ -176,7 +163,7 @@ export function FormTemplateTabs({
             }}
             readOnly={!canEdit}
             active={tab === "email"}
-            heightClass="min-h-[520px] flex-1"
+            heightClass="h-full min-h-0"
             discountCode={template.discountCode}
             linkedDiscountCode={template.discountCode}
             linkedDiscountHref={QR_LEAD_FUNNEL.formPath}

@@ -22,6 +22,7 @@ import {
   type EmailImageStyle,
   type EmailTextStyle,
 } from "@/lib/email-style";
+import { Select } from "@/components/select";
 import { cn } from "@/lib/utils";
 
 const fieldClass =
@@ -142,57 +143,59 @@ export function TextStyleControls({
       <div className="grid gap-2 @[260px]:grid-cols-2">
         <div>
           <p className={labelClass}>Font</p>
-          <select
-            className={fieldClass}
+          <Select
+            className="mt-1 w-full"
             value={s.fontFamily ?? defaults.fontFamily}
-            onChange={(e) => patch({ fontFamily: e.target.value })}
-          >
-            <optgroup label="System">
-              {BUILTIN_FONTS.map((k) => (
-                <option key={k} value={k}>
-                  {EMAIL_FONT_LABELS[k]}
-                </option>
-              ))}
-            </optgroup>
-            {customFonts.length > 0 ? (
-              <optgroup label="Brand fonts">
-                {customFonts.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name}
-                  </option>
-                ))}
-              </optgroup>
-            ) : null}
-          </select>
+            onChange={(v) => patch({ fontFamily: v })}
+            options={[
+              {
+                label: "System",
+                options: BUILTIN_FONTS.map((k) => ({
+                  value: k,
+                  label: EMAIL_FONT_LABELS[k],
+                })),
+              },
+              ...(customFonts.length
+                ? [
+                    {
+                      label: "Brand fonts",
+                      options: customFonts.map((f) => ({
+                        value: f.id,
+                        label: f.name,
+                      })),
+                    },
+                  ]
+                : []),
+            ]}
+          />
         </div>
         <div>
           <p className={labelClass}>Size</p>
-          <select
-            className={fieldClass}
-            value={s.fontSize ?? defaults.fontSize}
-            onChange={(e) => patch({ fontSize: Number(e.target.value) })}
-          >
-            {FONT_SIZE_PRESETS.map((n) => (
-              <option key={n} value={n}>
-                {n}px
-              </option>
-            ))}
-          </select>
+          <Select
+            className="mt-1 w-full"
+            value={String(s.fontSize ?? defaults.fontSize)}
+            onChange={(v) => patch({ fontSize: Number(v) })}
+            options={FONT_SIZE_PRESETS.map((n) => ({
+              value: String(n),
+              label: `${n}px`,
+            }))}
+          />
         </div>
         <div>
           <p className={labelClass}>Weight</p>
-          <select
-            className={fieldClass}
-            value={s.fontWeight ?? defaults.fontWeight}
-            onChange={(e) =>
-              patch({ fontWeight: Number(e.target.value) as EmailFontWeight })
+          <Select
+            className="mt-1 w-full"
+            value={String(s.fontWeight ?? defaults.fontWeight)}
+            onChange={(v) =>
+              patch({ fontWeight: Number(v) as EmailFontWeight })
             }
-          >
-            <option value={400}>Regular</option>
-            <option value={500}>Medium</option>
-            <option value={600}>Semibold</option>
-            <option value={700}>Bold</option>
-          </select>
+            options={[
+              { value: "400", label: "Regular" },
+              { value: "500", label: "Medium" },
+              { value: "600", label: "Semibold" },
+              { value: "700", label: "Bold" },
+            ]}
+          />
         </div>
         <div>
           <p className={labelClass}>Align</p>
@@ -206,35 +209,29 @@ export function TextStyleControls({
         {showLineHeight ? (
           <div>
             <p className={labelClass}>Line height</p>
-            <select
-              className={fieldClass}
+            <Select
+              className="mt-1 w-full"
               value={String(s.lineHeight ?? 1.5)}
-              onChange={(e) => patch({ lineHeight: Number(e.target.value) })}
-            >
-              {[1.2, 1.35, 1.5, 1.6, 1.8, 2].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => patch({ lineHeight: Number(v) })}
+              options={[1.2, 1.35, 1.5, 1.6, 1.8, 2].map((n) => ({
+                value: String(n),
+                label: String(n),
+              }))}
+            />
           </div>
         ) : null}
         {showLetterSpacing ? (
           <div>
             <p className={labelClass}>Letter spacing</p>
-            <select
-              className={fieldClass}
+            <Select
+              className="mt-1 w-full"
               value={String(s.letterSpacing ?? 0)}
-              onChange={(e) =>
-                patch({ letterSpacing: Number(e.target.value) })
-              }
-            >
-              {[0, 0.02, 0.04, 0.08, 0.12, 0.18].map((n) => (
-                <option key={n} value={n}>
-                  {n === 0 ? "Normal" : `${n}em`}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => patch({ letterSpacing: Number(v) })}
+              options={[0, 0.02, 0.04, 0.08, 0.12, 0.18].map((n) => ({
+                value: String(n),
+                label: n === 0 ? "Normal" : `${n}em`,
+              }))}
+            />
           </div>
         ) : null}
       </div>
@@ -276,17 +273,15 @@ export function ImageStyleControls({
         </div>
         <div>
           <p className={labelClass}>Width</p>
-          <select
-            className={fieldClass}
-            value={s.widthPercent ?? 100}
-            onChange={(e) => patch({ widthPercent: Number(e.target.value) })}
-          >
-            {[100, 90, 80, 70, 60, 50].map((n) => (
-              <option key={n} value={n}>
-                {n}%
-              </option>
-            ))}
-          </select>
+          <Select
+            className="mt-1 w-full"
+            value={String(s.widthPercent ?? 100)}
+            onChange={(v) => patch({ widthPercent: Number(v) })}
+            options={[100, 90, 80, 70, 60, 50].map((n) => ({
+              value: String(n),
+              label: `${n}%`,
+            }))}
+          />
         </div>
         <div className="@[260px]:col-span-2">
           <p className={labelClass}>Corner radius</p>
@@ -420,31 +415,27 @@ export function DividerStyleControls({
       <div className="grid gap-2 @[260px]:grid-cols-2">
         <div>
           <p className={labelClass}>Thickness</p>
-          <select
-            className={fieldClass}
-            value={s.thickness ?? 1}
-            onChange={(e) => patch({ thickness: Number(e.target.value) })}
-          >
-            {[1, 2, 3, 4].map((n) => (
-              <option key={n} value={n}>
-                {n}px
-              </option>
-            ))}
-          </select>
+          <Select
+            className="mt-1 w-full"
+            value={String(s.thickness ?? 1)}
+            onChange={(v) => patch({ thickness: Number(v) })}
+            options={[1, 2, 3, 4].map((n) => ({
+              value: String(n),
+              label: `${n}px`,
+            }))}
+          />
         </div>
         <div>
           <p className={labelClass}>Side inset</p>
-          <select
-            className={fieldClass}
-            value={s.inset ?? 32}
-            onChange={(e) => patch({ inset: Number(e.target.value) })}
-          >
-            {[0, 16, 24, 32, 48].map((n) => (
-              <option key={n} value={n}>
-                {n}px
-              </option>
-            ))}
-          </select>
+          <Select
+            className="mt-1 w-full"
+            value={String(s.inset ?? 32)}
+            onChange={(v) => patch({ inset: Number(v) })}
+            options={[0, 16, 24, 32, 48].map((n) => ({
+              value: String(n),
+              label: `${n}px`,
+            }))}
+          />
         </div>
       </div>
     </div>

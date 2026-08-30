@@ -1,30 +1,39 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Phone, ExternalLink } from "lucide-react";
-import { getConversation, listMessages } from "@/lib/data/repo";
+import { getConversation, listMessages, listStaffUsers } from "@/lib/data/repo";
+import { AssignControl } from "@/components/inbox/assign-control";
 import { Avatar, Badge } from "@/components/ui";
 import { ConvStatusBadge } from "@/components/status";
 import { Composer } from "@/components/inbox/composer";
 import { MessageThread } from "@/components/inbox/message-thread";
+import { assignableAgents } from "@/lib/cs-routing";
 import { windowMinutesLeft } from "@/lib/format";
+import { requirePermission } from "@/lib/guard";
+import { can } from "@/lib/rbac";
 
 export default async function ConversationPage({
   params,
 }: {
   params: Promise<{ conversationId: string }>;
 }) {
-  const { conversationId } = await params;
-  const [conv, messages] = await Promise.all([
+  const [{ conversationId }, user] = await Promise.all([
+    params,
+    requirePermission("inbox.view"),
+  ]);
+  const [conv, messages, staff] = await Promise.all([
     getConversation(conversationId),
     listMessages(conversationId),
+    listStaffUsers(),
   ]);
   if (!conv) notFound();
   const mins = windowMinutesLeft(conv.lastInboundAt);
   const windowOpen = mins > 0;
+  const agents = assignableAgents(staff);
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-surface px-3 py-3 sm:px-4">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-surface px-3 py-3 sm:px-4">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Link
             href="/inbox"
@@ -46,10 +55,18 @@ export default async function ConversationPage({
             </div>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2 pl-9 md:pl-0">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 pl-9 md:pl-0">
           <Badge tone={windowOpen ? "success" : "danger"}>
             {windowOpen ? `${Math.floor(mins / 60)}h ${mins % 60}m left` : "24h window closed"}
           </Badge>
+          {can(user.role, "inbox.reply") && (
+            <AssignControl
+              conversationId={conv.id}
+              assigneeId={conv.assigneeId}
+              currentUserId={user.id}
+              agents={agents}
+            />
+          )}
           <Link
             href={`/customers/${conv.customerId}`}
             className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-surface-muted"

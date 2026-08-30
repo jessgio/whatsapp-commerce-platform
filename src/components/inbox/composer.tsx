@@ -16,7 +16,7 @@ export function Composer({
   const formRef = useRef<HTMLFormElement>(null);
 
   return (
-    <div className="border-t border-border bg-surface p-3">
+    <div className="shrink-0 border-t border-border bg-surface p-3">
       {error && (
         <p className="mb-2 rounded-md bg-danger/10 px-3 py-2 text-xs text-danger" role="alert">
           {error}

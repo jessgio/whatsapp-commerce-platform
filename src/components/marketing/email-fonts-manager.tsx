@@ -16,7 +16,7 @@ import {
   type BuiltinEmailFont,
 } from "@/lib/email-style";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui";
+import { Button, Select } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 const fieldClass =
@@ -153,19 +153,15 @@ export function EmailFontsManager({
             </div>
             <div>
               <label className="text-sm font-medium">Fallback stack</label>
-              <select
-                className={fieldClass}
+              <Select
+                className="mt-1 w-full"
                 value={fallback}
-                onChange={(e) =>
-                  setFallback(e.target.value as BuiltinEmailFont)
-                }
-              >
-                {BUILTIN_FONTS.map((f) => (
-                  <option key={f} value={f}>
-                    {EMAIL_FONT_LABELS[f]}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setFallback(v as BuiltinEmailFont)}
+                options={BUILTIN_FONTS.map((f) => ({
+                  value: f,
+                  label: EMAIL_FONT_LABELS[f],
+                }))}
+              />
             </div>
           </div>
 

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui";
+import { Button, Select } from "@/components/ui";
 import { CityCombobox } from "@/components/leads/city-combobox";
 import {
   COUNTRY_DIAL_CODES,
@@ -67,19 +67,17 @@ export const LeadFormField = React.memo(function LeadFormField({
           <label htmlFor={`${field.id}-cc`} className="sr-only">
             Kode negara
           </label>
-          <select
+          <Select
             id={`${field.id}-cc`}
             name="countryCode"
             value={countryCode}
-            onChange={(e) => onCountryCode(e.target.value)}
-            className="w-[9.5rem] shrink-0 rounded-lg border border-border bg-surface px-2.5 py-2.5 text-sm text-foreground outline-none transition focus:border-merlot focus:ring-2 focus:ring-merlot/20 sm:w-44"
-          >
-            {COUNTRY_DIAL_CODES.map((c) => (
-              <option key={`${c.iso}-${c.dial}`} value={c.dial}>
-                {c.iso} +{c.dial}
-              </option>
-            ))}
-          </select>
+            onChange={onCountryCode}
+            className="w-[9.5rem] shrink-0 sm:w-44"
+            options={COUNTRY_DIAL_CODES.map((c) => ({
+              value: c.dial,
+              label: `${c.iso} +${c.dial}`,
+            }))}
+          />
           <input
             id={field.id}
             name={field.key}
@@ -154,21 +152,22 @@ export const LeadFormField = React.memo(function LeadFormField({
             <span className="font-normal text-muted"> (Opsional)</span>
           ) : null}
         </label>
-        <select
+        <Select
           id={field.id}
           name={field.key}
           required={field.required}
           value={String(value ?? "")}
-          onChange={(e) => onValue(field.key, e.target.value)}
-          className={fieldClass}
-        >
-          <option value="">Pilih…</option>
-          {(field.options ?? []).map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => onValue(field.key, v)}
+          className="mt-1.5 w-full"
+          placeholder="Pilih…"
+          options={[
+            { value: "", label: "Pilih…" },
+            ...(field.options ?? []).map((o) => ({
+              value: o.value,
+              label: o.label,
+            })),
+          ]}
+        />
         {field.helpText ? (
           <p className="mt-1 text-xs text-muted">{field.helpText}</p>
         ) : null}

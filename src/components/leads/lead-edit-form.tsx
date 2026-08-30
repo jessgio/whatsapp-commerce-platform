@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui";
+import { Button, Select } from "@/components/ui";
 import { CityCombobox } from "@/components/leads/city-combobox";
 import {
   COUNTRY_DIAL_CODES,
@@ -113,18 +113,16 @@ export function LeadEditForm({
           Nomor Telepon
         </label>
         <div className="mt-1.5 flex gap-2">
-          <select
+          <Select
             id="countryCode"
             value={countryCode}
-            onChange={(e) => setCountryCode(e.target.value)}
-            className="w-[9.5rem] shrink-0 rounded-lg border border-border bg-surface px-2.5 py-2.5 text-sm sm:w-44"
-          >
-            {COUNTRY_DIAL_CODES.map((c) => (
-              <option key={`${c.iso}-${c.dial}`} value={c.dial}>
-                {c.iso} +{c.dial}
-              </option>
-            ))}
-          </select>
+            onChange={setCountryCode}
+            className="w-[9.5rem] shrink-0 sm:w-44"
+            options={COUNTRY_DIAL_CODES.map((c) => ({
+              value: c.dial,
+              label: `${c.iso} +${c.dial}`,
+            }))}
+          />
           <input
             id="phone"
             type="tel"

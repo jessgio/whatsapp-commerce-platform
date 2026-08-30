@@ -4,7 +4,7 @@ import { requirePermission } from "@/lib/guard";
 import { getEmailTemplate } from "@/lib/data/email-templates";
 import { getActiveFormTemplate } from "@/lib/data/form-templates";
 import { listEmailFonts } from "@/lib/data/email-fonts";
-import { PageHeader } from "@/components/ui";
+import { EditorPageShell } from "@/components/editor/editor-page-shell";
 import { EmailTemplateEditor } from "@/components/settings/email-template-editor";
 import { saveEmailTemplateAction } from "@/app/(portal)/marketing/design/email/actions";
 import { DeleteEmailTemplateButton } from "@/components/marketing/delete-email-template-button";
@@ -31,63 +31,48 @@ export default async function EmailTemplateEditPage({
   const linkedDiscount = formTemplate?.discountCode;
 
   return (
-    <div className="flex h-full flex-col gap-3">
-      <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
-        <div>
-          <Link
-            href="/marketing/design/email"
-            className="text-sm text-muted hover:text-foreground"
-          >
-            ← Back to email templates
-          </Link>
-          <PageHeader
-            title={template.name}
-            subtitle={
-              isWelcome
-                ? "System template — part of the QR lead funnel"
-                : "Campaign template — reusable in Marketing → Campaigns"
-            }
-          />
-        </div>
-        {!isWelcome ? <DeleteEmailTemplateButton id={template.id} /> : null}
-      </div>
-
-      {isWelcome ? (
-        <p className="shrink-0 rounded-lg border border-merlot/20 bg-merlot/5 px-3 py-2 text-xs leading-relaxed text-foreground">
-          {QR_LEAD_FUNNEL.welcomeBanner}{" "}
-          <Link
-            href={QR_LEAD_FUNNEL.formPath}
-            className="font-medium text-merlot hover:underline"
-          >
-            Open QR lead funnel
-          </Link>
-          {linkedDiscount ? (
+    <EditorPageShell
+      backHref="/marketing/design/email"
+      backLabel="Email templates"
+      title={template.name}
+      actions={!isWelcome ? <DeleteEmailTemplateButton id={template.id} /> : null}
+      meta={
+        <>
+          {isWelcome ? (
             <>
-              {" "}
-              · Current code{" "}
-              <code className="font-mono font-medium">{linkedDiscount}</code>
+              System template · QR lead funnel
+              {" · "}
+              <Link
+                href={QR_LEAD_FUNNEL.formPath}
+                className="text-merlot hover:underline"
+              >
+                Open funnel
+              </Link>
+              {linkedDiscount ? (
+                <>
+                  {" · "}
+                  <code className="font-mono">{linkedDiscount}</code>
+                </>
+              ) : null}
             </>
-          ) : null}
-        </p>
-      ) : null}
-
-      <p className="shrink-0 text-xs text-muted">
-        Brand fonts:{" "}
-        <Link
-          href="/marketing/design/email/fonts"
-          className="text-merlot hover:underline"
-        >
-          manage uploads
-        </Link>
-        {fonts.length ? ` · ${fonts.length} available` : " · none uploaded yet"}
-        . Custom fonts render in Apple Mail / iOS; Gmail and Outlook fall back to
-        the paired system stack.
-      </p>
-
+          ) : (
+            "Campaign template · reusable in Campaigns"
+          )}
+          {" · "}
+          <Link
+            href="/marketing/design/email/fonts"
+            className="text-merlot hover:underline"
+          >
+            Brand fonts
+          </Link>
+          {fonts.length ? ` (${fonts.length})` : ""}
+        </>
+      }
+    >
       <EmailTemplateEditor
         initial={template}
         customFonts={fonts}
-        heightClass="min-h-[520px] flex-1"
+        heightClass="h-full min-h-0"
         discountCode={linkedDiscount ?? undefined}
         linkedDiscountCode={linkedDiscount ?? undefined}
         linkedDiscountHref={isWelcome ? QR_LEAD_FUNNEL.formPath : undefined}
@@ -98,6 +83,6 @@ export default async function EmailTemplateEditPage({
         }
         onSave={saveEmailTemplateAction}
       />
-    </div>
+    </EditorPageShell>
   );
 }

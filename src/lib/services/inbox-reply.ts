@@ -4,6 +4,7 @@ import { getConversation } from "@/lib/data/repo";
 import { shouldUseSupabaseData } from "@/lib/data/mode";
 import { appendDemoOutboundMessage } from "@/lib/demo/data";
 import { sendText } from "@/lib/integrations/whatsapp";
+import { claimConversation } from "@/lib/services/cs-routing";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 function formatWhatsAppError(raw?: string): string {
@@ -26,6 +27,7 @@ function formatWhatsAppError(raw?: string): string {
 export async function sendConversationReply(
   conversationId: string,
   body: string,
+  options?: { actorId?: string },
 ): Promise<{ ok: boolean; error?: string }> {
   const trimmed = body.trim();
   if (!trimmed) return { ok: false, error: "Message is empty." };
@@ -67,6 +69,10 @@ export async function sendConversationReply(
       .eq("id", conversationId);
   } else {
     appendDemoOutboundMessage(conversationId, trimmed);
+  }
+
+  if (!conv.assigneeId && options?.actorId) {
+    await claimConversation(conversationId, options.actorId);
   }
 
   revalidatePath(`/inbox/${conversationId}`);
