@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Layers, UploadCloud } from "lucide-react";
+import { Layers } from "lucide-react";
 import { requirePermission } from "@/lib/guard";
 import { can } from "@/lib/rbac";
 import { countCustomers, listCustomers } from "@/lib/data/repo";
 import { listSegmentDefinitions } from "@/lib/data/segments";
 import { Button, PageHeader } from "@/components/ui";
 import { CustomerTable } from "@/components/customers/customer-table";
+import { ImportContactsButton } from "@/components/customers/import-contacts";
 
 export default async function CustomersPage() {
   const user = await requirePermission("customers.view");
@@ -29,11 +30,7 @@ export default async function CustomersPage() {
                 <Layers size={15} /> Segments
               </Button>
             </Link>
-            {canEdit ? (
-              <Button variant="secondary">
-                <UploadCloud size={15} /> Import contacts
-              </Button>
-            ) : null}
+            {canEdit ? <ImportContactsButton /> : null}
           </>
         }
       />

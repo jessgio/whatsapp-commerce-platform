@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import { requirePermission } from "@/lib/guard";
 import { can } from "@/lib/rbac";
 import { countSegmentMembers } from "@/lib/data/segment-members";
@@ -33,11 +33,11 @@ export default async function CustomerSegmentsPage() {
         }
       />
 
-      <div className="mb-4 text-sm">
-        <Link href="/customers" className="text-merlot hover:underline">
-          ← Back to customers
-        </Link>
-      </div>
+      <Link href="/customers" className="mb-6 inline-flex">
+        <Button variant="secondary" className="h-8 px-2.5 text-xs">
+          <ArrowLeft size={14} /> Back to customers
+        </Button>
+      </Link>
 
       {segments.length === 0 ? (
         <div className="rounded-[16px] border border-dashed border-border bg-surface px-6 py-12 text-center">

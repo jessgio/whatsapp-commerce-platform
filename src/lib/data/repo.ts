@@ -122,6 +122,138 @@ export async function getCustomer(id: string): Promise<Customer | null> {
   return DEMO_CUSTOMERS.find((c) => c.id === id) ?? null;
 }
 
+export type CustomerImportInput = {
+  row: number;
+  name: string;
+  waId: string;
+  phone: string;
+  email: string | null;
+  city: string | null;
+  birthDate: string | null;
+  tags: string[];
+};
+
+export type CustomerImportResult = {
+  created: number;
+  updated: number;
+  failed: { row: number; reason: string }[];
+};
+
+function mergeTags(existing: string[] | null | undefined, extra: string[]): string[] {
+  const out = new Set<string>([...(existing ?? []), ...extra, "imported"]);
+  return [...out];
+}
+
+export async function importCustomers(
+  rows: CustomerImportInput[],
+): Promise<CustomerImportResult> {
+  const failed: { row: number; reason: string }[] = [];
+  let created = 0;
+  let updated = 0;
+  const now = new Date().toISOString();
+
+  if (!shouldUseSupabaseData()) {
+    for (const [i, row] of rows.entries()) {
+      const existing = DEMO_CUSTOMERS.find(
+        (c) => c.waId === row.waId || c.phone.replace(/\D/g, "") === row.waId,
+      );
+      if (existing) {
+        existing.name = row.name;
+        existing.phone = row.phone;
+        existing.waId = row.waId;
+        if (row.email) existing.email = row.email;
+        if (row.city) existing.city = row.city;
+        if (row.birthDate) existing.birthDate = row.birthDate;
+        existing.tags = mergeTags(existing.tags, row.tags);
+        updated += 1;
+        continue;
+      }
+      DEMO_CUSTOMERS.unshift({
+        id: `c-import-${Date.now()}-${i}`,
+        waId: row.waId,
+        name: row.name,
+        phone: row.phone,
+        email: row.email,
+        city: row.city,
+        birthDate: row.birthDate,
+        consentStatus: "pending",
+        consentChannel: "import",
+        segments: ["New"],
+        tags: mergeTags([], row.tags),
+        lifetimeValue: 0,
+        orderCount: 0,
+        firstSeenAt: now,
+        lastOrderAt: null,
+        termsAcceptedAt: null,
+        termsVersion: null,
+        createdAt: now,
+      });
+      created += 1;
+    }
+    return { created, updated, failed };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  for (const row of rows) {
+    const line = row.row;
+    const { data: existing, error: lookupError } = await supabase
+      .from("customers")
+      .select("id, tags, email, city, birth_date")
+      .eq("wa_id", row.waId)
+      .maybeSingle();
+    if (lookupError) {
+      failed.push({ row: line, reason: lookupError.message });
+      continue;
+    }
+
+    const tags = mergeTags(
+      Array.isArray(existing?.tags) ? (existing.tags as string[]) : [],
+      row.tags,
+    );
+
+    if (existing) {
+      const { error } = await supabase
+        .from("customers")
+        .update({
+          name: row.name,
+          phone: row.phone,
+          email: row.email ?? existing.email,
+          city: row.city ?? existing.city,
+          birth_date: row.birthDate ?? existing.birth_date,
+          tags,
+        })
+        .eq("id", existing.id);
+      if (error) {
+        failed.push({ row: line, reason: error.message });
+        continue;
+      }
+      updated += 1;
+      continue;
+    }
+
+    const { error } = await supabase.from("customers").insert({
+      wa_id: row.waId,
+      name: row.name,
+      phone: row.phone,
+      email: row.email,
+      city: row.city,
+      birth_date: row.birthDate,
+      consent_status: "pending",
+      consent_channel: "import",
+      segments: ["New"],
+      tags,
+      first_seen_at: now,
+    });
+    if (error) {
+      failed.push({ row: line, reason: error.message });
+      continue;
+    }
+    created += 1;
+  }
+
+  return { created, updated, failed };
+}
+
 export async function getCustomerAddresses(customerId: string): Promise<Address[]> {
   if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();

@@ -11,8 +11,10 @@ import {
   listWaInteractiveDesigns,
   listWaTemplateDesigns,
 } from "@/lib/data/whatsapp-designs";
-import { PageHeader } from "@/components/ui";
+import { ArrowLeft } from "lucide-react";
+import { Button, PageHeader } from "@/components/ui";
 import { CampaignForm } from "@/components/marketing/campaign-form";
+import { DeleteCampaignButton } from "@/components/marketing/campaign-row-actions";
 
 export default async function CampaignDetailPage({
   params,
@@ -51,16 +53,25 @@ export default async function CampaignDetailPage({
 
   return (
     <div className="space-y-4">
-      <div>
-        <Link
-          href="/marketing/campaigns"
-          className="text-sm text-muted hover:text-foreground"
-        >
-          ← Back to campaigns
+      <div className="space-y-3">
+        <Link href="/marketing/campaigns" className="inline-flex">
+          <Button variant="secondary" className="h-8 px-2.5 text-xs">
+            <ArrowLeft size={14} /> Back to campaigns
+          </Button>
         </Link>
         <PageHeader
           title={campaign.name}
           subtitle="Audience, schedule, and message design"
+          actions={
+            can(user.role, "marketing.edit") ? (
+              <DeleteCampaignButton
+                id={campaign.id}
+                name={campaign.name}
+                status={campaign.status}
+                afterDelete="list"
+              />
+            ) : undefined
+          }
         />
       </div>
       <CampaignForm

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
 import { RouteUnassignedButton } from "@/components/inbox/route-unassigned-button";
 import { Avatar } from "@/components/ui";
 import { cn, initials } from "@/lib/utils";
@@ -25,18 +26,36 @@ export function ConversationList({
 }) {
   const pathname = usePathname();
   const [filter, setFilter] = useState<Filter>("all");
+  const [q, setQ] = useState("");
   const conversationSelected = pathname.startsWith("/inbox/") && pathname !== "/inbox";
 
   const unassignedOpen = conversations.filter(
     (c) => !c.assigneeId && c.status !== "resolved",
   ).length;
 
-  const filtered = conversations.filter((c) => {
-    if (filter === "open") return c.status !== "resolved";
-    if (filter === "mine") return c.assigneeId === currentUserId;
-    if (filter === "unassigned") return !c.assigneeId;
-    return true;
-  });
+  const filtered = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    const digits = term.replace(/\D/g, "");
+    return conversations.filter((c) => {
+      if (filter === "open" && c.status === "resolved") return false;
+      if (filter === "mine" && c.assigneeId !== currentUserId) return false;
+      if (filter === "unassigned" && c.assigneeId) return false;
+      if (!term) return true;
+      const hay = [
+        c.customerName,
+        c.customerWaId,
+        c.lastMessagePreview,
+        c.assigneeName,
+        c.topic,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (hay.includes(term)) return true;
+      if (digits && c.customerWaId.replace(/\D/g, "").includes(digits)) return true;
+      return false;
+    });
+  }, [conversations, filter, currentUserId, q]);
 
   const tabs: Filter[] = ["all", "open", "mine", "unassigned"];
 
@@ -47,28 +66,45 @@ export function ConversationList({
         conversationSelected ? "hidden" : "flex",
       )}
     >
-      <div className="flex shrink-0 items-center gap-1 border-b border-border p-2">
-        <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-          {tabs.map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={cn(
-                "shrink-0 rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors",
-                filter === f ? "bg-merlot text-primary-foreground" : "text-muted hover:bg-surface-muted",
-              )}
-            >
-              {f}
-              {f === "unassigned" && unassignedOpen > 0 ? ` ${unassignedOpen}` : ""}
-            </button>
-          ))}
+      <div className="shrink-0 border-b border-border p-2">
+        <div className="relative">
+          <Search
+            size={15}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted"
+          />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search name, number, message…"
+            aria-label="Search conversations"
+            className="w-full rounded-lg border border-border bg-surface-muted py-1.5 pl-8 pr-3 text-sm outline-none placeholder:text-muted focus:border-merlot focus:bg-surface"
+          />
         </div>
-        {canAssign && <RouteUnassignedButton count={unassignedOpen} />}
+        <div className="mt-2 flex items-center gap-1">
+          <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+            {tabs.map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={cn(
+                  "shrink-0 rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors",
+                  filter === f ? "bg-merlot text-primary-foreground" : "text-muted hover:bg-surface-muted",
+                )}
+              >
+                {f}
+                {f === "unassigned" && unassignedOpen > 0 ? ` ${unassignedOpen}` : ""}
+              </button>
+            ))}
+          </div>
+          {canAssign && <RouteUnassignedButton count={unassignedOpen} />}
+        </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {filtered.length === 0 && (
           <p className="px-3 py-6 text-center text-xs text-muted">
-            No conversations in this view.
+            {q.trim()
+              ? "No conversations match that search."
+              : "No conversations in this view."}
           </p>
         )}
         {filtered.map((c) => {

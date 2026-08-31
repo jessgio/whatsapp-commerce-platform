@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: "Lengkapi alamat dan bayar pesanan WhatsApp Catalog Anda.",
   robots: { index: false, follow: false },
   icons: {
-    icon: [{ url: "/brand/og-icon.png", type: "image/png" }],
+    icon: [{ url: "/brand/aeris-mark-32.png", type: "image/png", sizes: "32x32" }],
     apple: [{ url: "/brand/og-icon.png" }],
   },
 };

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   description:
     "Internal CRM, OMS & WMS connected to WhatsApp Business for sales, customer service, and warehouse operations.",
   icons: {
-    icon: [{ url: "/brand/og-icon.png", type: "image/png" }],
+    icon: [{ url: "/brand/aeris-mark-32.png", type: "image/png", sizes: "32x32" }],
     apple: [{ url: "/apple-icon.png" }],
   },
 };

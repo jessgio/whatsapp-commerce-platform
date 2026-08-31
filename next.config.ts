@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "35mb",
     },
   },
+  serverExternalPackages: ["exceljs"],
 };
 
 export default nextConfig;

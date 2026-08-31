@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { MapPin, Star, MessageSquare, ShieldCheck } from "lucide-react";
+import { MapPin, Star, MessageSquare, ShieldCheck, ArrowLeft } from "lucide-react";
 import { requirePermission } from "@/lib/guard";
 import { can } from "@/lib/rbac";
 import { getCustomer, getCustomerAddresses, listOrdersForCustomer } from "@/lib/data/repo";
-import { Avatar, Badge, Card, CardBody, CardHeader, CardTitle, Table, Th, Td } from "@/components/ui";
+import { Avatar, Badge, Button, Card, CardBody, CardHeader, CardTitle, Table, Th, Td } from "@/components/ui";
 import { ConsentBadge, OrderBadge, PaymentBadge } from "@/components/status";
 import { formatIDR, formatIDRCompact, formatDate } from "@/lib/format";
 
@@ -23,9 +23,11 @@ export default async function CustomerDetailPage({
   const canSeePii = can(user.role, "customers.pii");
 
   return (
-    <div className="space-y-4">
-      <Link href="/customers" className="text-sm text-muted hover:text-foreground">
-        ← Back to customers
+    <div className="space-y-6">
+      <Link href="/customers" className="inline-flex">
+        <Button variant="secondary" className="h-8 px-2.5 text-xs">
+          <ArrowLeft size={14} /> Back to customers
+        </Button>
       </Link>
 
       <div className="flex flex-wrap items-center justify-between gap-4">

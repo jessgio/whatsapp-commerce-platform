@@ -5,6 +5,7 @@ import { listFormTemplates } from "@/lib/data/form-templates";
 import { QR_LEAD_FORM_TEMPLATE_ID } from "@/lib/form-templates";
 import { QR_LEAD_FUNNEL } from "@/lib/qr-lead-funnel";
 import { Button, PageHeader } from "@/components/ui";
+import { ArrowLeft } from "lucide-react";
 import { createFormTemplateAction } from "@/app/(portal)/marketing/design/form/actions";
 import { redirect } from "next/navigation";
 
@@ -22,12 +23,11 @@ export default async function FormTemplatesListPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <Link
-            href="/marketing/design"
-            className="text-sm text-muted hover:text-foreground"
-          >
-            ← Back to design
+        <div className="space-y-3">
+          <Link href="/marketing/design" className="inline-flex">
+            <Button variant="secondary" className="h-8 px-2.5 text-xs">
+              <ArrowLeft size={14} /> Back to design
+            </Button>
           </Link>
           <PageHeader
             title="Form templates"

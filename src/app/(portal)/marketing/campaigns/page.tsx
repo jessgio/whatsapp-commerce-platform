@@ -6,6 +6,7 @@ import { listCampaigns } from "@/lib/data/campaigns";
 import { listSegmentDefinitions } from "@/lib/data/segments";
 import { CAMPAIGN_STATUS_LABELS } from "@/lib/campaigns";
 import { Badge, Button, PageHeader } from "@/components/ui";
+import { CampaignRowActions } from "@/components/marketing/campaign-row-actions";
 
 function statusTone(
   status: keyof typeof CAMPAIGN_STATUS_LABELS,
@@ -72,6 +73,9 @@ export default async function CampaignsPage() {
                 <th className="px-4 py-3 font-medium">Segment</th>
                 <th className="px-4 py-3 font-medium">Schedule</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                {canEdit ? (
+                  <th className="px-4 py-3 text-right font-medium">Actions</th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
@@ -104,6 +108,15 @@ export default async function CampaignsPage() {
                       {CAMPAIGN_STATUS_LABELS[c.status]}
                     </Badge>
                   </td>
+                  {canEdit ? (
+                    <td className="px-4 py-3">
+                      <CampaignRowActions
+                        id={c.id}
+                        name={c.name}
+                        status={c.status}
+                      />
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>

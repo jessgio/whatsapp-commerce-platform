@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   title: "Daftar | Aeris Beauté",
   description: "Lengkapi data kontak Anda untuk Aeris Beauté.",
   icons: {
-    icon: [{ url: "/brand/og-icon.png", type: "image/png" }],
+    icon: [{ url: "/brand/aeris-mark-32.png", type: "image/png", sizes: "32x32" }],
     apple: [{ url: "/brand/og-icon.png" }],
   },
   openGraph: {

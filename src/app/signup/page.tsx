@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ChevronRight, Mail, User } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { dataMode } from "@/lib/env";
 import { STAFF_EMAIL_DOMAIN } from "@/lib/auth-policy";
 import { homePathForRole } from "@/lib/rbac";
 import { GoogleIcon } from "@/components/google-icon";
+import { AuthSplitShell } from "@/components/auth/auth-split-shell";
+import { PasswordField } from "@/components/auth/password-field";
 import { signInWithGoogle, signUpWithPassword } from "@/app/auth-actions";
 
 export default async function SignUpPage({
@@ -19,124 +22,116 @@ export default async function SignUpPage({
   const { error } = await searchParams;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-4xl overflow-hidden rounded-[20px] border border-border bg-surface shadow-[0_12px_40px_rgba(45,43,42,0.10)] md:grid md:grid-cols-2">
-        <div className="hidden flex-col justify-between bg-sidebar p-8 text-cream md:flex">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-merlot text-base font-bold text-primary-foreground">
-              A
-            </span>
-            <span className="text-lg font-semibold">Aeris Beaute</span>
-          </div>
-          <div className="space-y-3">
-            <h2 className="text-2xl font-semibold leading-snug">Join the team workspace.</h2>
-            <p className="text-sm text-taupe">
-              Sign up with your company Google account. Access is limited to{" "}
-              <span className="font-medium text-cream">@{STAFF_EMAIL_DOMAIN}</span> addresses.
-            </p>
-          </div>
-          <div className="flex gap-1.5">
-            {["#f6f1e9", "#d8c9b5", "#b49e8e", "#5f5448", "#6f2c3f", "#2d2b2a"].map((c) => (
-              <span key={c} className="h-6 w-6 rounded-md" style={{ background: c }} />
-            ))}
+    <AuthSplitShell
+      headline="Join the team workspace."
+      description={
+        <>
+          Inbox, orders, warehouse, and campaigns for WhatsApp ecommerce —{" "}
+          <span className="underline decoration-white/40 underline-offset-[5px]">
+            In one place.
+          </span>
+        </>
+      }
+    >
+      <h2 className="text-[26px] font-semibold tracking-tight text-foreground">
+        Create account
+      </h2>
+      <p className="mt-1.5 text-sm text-muted">
+        Sign up to continue to WhatsApp Commerce
+      </p>
+
+      {error && (
+        <p className="mt-5 rounded-xl bg-danger/10 px-3 py-2 text-sm text-danger">
+          {error}
+        </p>
+      )}
+
+      <form action={signUpWithPassword} className="mt-7 space-y-4">
+        <div>
+          <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-foreground">
+            Full name
+          </label>
+          <div className="relative">
+            <User
+              aria-hidden
+              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+              strokeWidth={1.75}
+            />
+            <input
+              id="name"
+              name="name"
+              type="text"
+              required
+              autoComplete="name"
+              placeholder="Jessica Tan"
+              className="h-12 w-full rounded-xl bg-[#F7F1E8] pl-11 pr-3 text-sm text-foreground outline-none ring-1 ring-transparent transition placeholder:text-muted/70 focus:bg-white focus:ring-merlot/25"
+            />
           </div>
         </div>
-
-        <div className="p-8">
-          <div className="mb-6 flex items-center gap-2.5 md:hidden">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-merlot text-base font-bold text-primary-foreground">
-              A
-            </span>
-            <span className="text-lg font-semibold text-foreground">Aeris Beaute</span>
+        <div>
+          <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-foreground">
+            Work email
+          </label>
+          <div className="relative">
+            <Mail
+              aria-hidden
+              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+              strokeWidth={1.75}
+            />
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              placeholder={`you@${STAFF_EMAIL_DOMAIN}`}
+              className="h-12 w-full rounded-xl bg-[#F7F1E8] pl-11 pr-3 text-sm text-foreground outline-none ring-1 ring-transparent transition placeholder:text-muted/70 focus:bg-white focus:ring-merlot/25"
+            />
           </div>
-          <h1 className="text-xl font-semibold text-foreground">Create account</h1>
-          <p className="mt-1 text-sm text-muted">
-            Fastest with Google — or use your{" "}
-            <span className="font-medium text-foreground">@{STAFF_EMAIL_DOMAIN}</span> email and a
-            password.
-          </p>
-
-          {error && (
-            <p className="mt-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
-          )}
-
-          <form action={signInWithGoogle} className="mt-6">
-            <button
-              type="submit"
-              className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-merlot hover:bg-surface-muted"
-            >
-              <GoogleIcon />
-              Continue with Google
-            </button>
-          </form>
-          <p className="mt-2 text-center text-xs text-muted">
-            Only <span className="font-medium text-foreground">@{STAFF_EMAIL_DOMAIN}</span> Google
-            accounts are accepted.
-          </p>
-
-          <div className="my-5 flex items-center gap-3">
-            <span className="h-px flex-1 bg-border" />
-            <span className="text-xs uppercase tracking-wide text-muted">or</span>
-            <span className="h-px flex-1 bg-border" />
-          </div>
-
-          <form action={signUpWithPassword} className="space-y-3">
-            <div>
-              <label htmlFor="name" className="mb-1 block text-xs font-medium text-muted">
-                Full name
-              </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                required
-                autoComplete="name"
-                placeholder="Jessica Tan"
-                className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-merlot"
-              />
-            </div>
-            <div>
-              <label htmlFor="email" className="mb-1 block text-xs font-medium text-muted">
-                Work email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                autoComplete="email"
-                placeholder={`you@${STAFF_EMAIL_DOMAIN}`}
-                className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-merlot"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="mb-1 block text-xs font-medium text-muted">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                minLength={8}
-                autoComplete="new-password"
-                placeholder="At least 8 characters"
-                className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-merlot"
-              />
-            </div>
-            <button className="w-full rounded-lg bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-merlot-600">
-              Create account with password
-            </button>
-          </form>
-
-          <p className="mt-4 text-center text-sm text-muted">
-            Already have an account?{" "}
-            <Link href="/login" className="font-medium text-merlot hover:underline">
-              Sign in
-            </Link>
-          </p>
         </div>
+        <div>
+          <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-foreground">
+            Password
+          </label>
+          <PasswordField autoComplete="new-password" minLength={8} placeholder="At least 8 characters" />
+        </div>
+        <button
+          type="submit"
+          className="flex h-12 w-full items-center justify-center gap-1 rounded-full bg-[#8B4455] text-sm font-medium text-white transition hover:bg-[#7a3b4b]"
+        >
+          Create account
+          <ChevronRight className="h-4 w-4" strokeWidth={2.2} />
+        </button>
+      </form>
+
+      <div className="my-6 flex items-center gap-3">
+        <span className="h-px flex-1 bg-border" />
+        <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted">
+          Or continue with
+        </span>
+        <span className="h-px flex-1 bg-border" />
       </div>
-    </div>
+
+      <form action={signInWithGoogle}>
+        <button
+          type="submit"
+          className="flex h-12 w-full items-center justify-center gap-2.5 rounded-full border border-[#E6DCD0] bg-white text-sm font-medium text-foreground transition hover:bg-[#F9F6F1]"
+        >
+          <GoogleIcon className="h-[18px] w-[18px]" />
+          Sign in with Google
+        </button>
+      </form>
+      <p className="mt-3 text-center text-xs text-muted">
+        Only <span className="font-medium text-foreground">@{STAFF_EMAIL_DOMAIN}</span> Google
+        accounts are accepted.
+      </p>
+
+      <p className="mt-6 text-center text-sm text-muted">
+        Already have an account?{" "}
+        <Link href="/login" className="font-medium text-merlot hover:underline">
+          Sign in
+        </Link>
+      </p>
+    </AuthSplitShell>
   );
 }

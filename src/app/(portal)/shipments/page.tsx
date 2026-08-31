@@ -22,7 +22,7 @@ export default async function ShipmentsPage() {
     <div>
       <PageHeader
         title="Shipments"
-        subtitle="3PL tracking via Biteship — SiCepat, J&T, JNE, Anteraja"
+        subtitle="3PL tracking via Biteship - SiCepat, J&T, JNE, Anteraja"
       />
 
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
