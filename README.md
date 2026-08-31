@@ -43,8 +43,35 @@ Copy `.env.example` → `.env.local` and fill in credentials to go live.
 6. Point provider webhooks at:
    - WhatsApp: `/api/webhooks/whatsapp` (verify token = `WHATSAPP_WEBHOOK_VERIFY_TOKEN`)
    - Payments: `/api/webhooks/payment`
-   - Shipping: `/api/webhooks/shipping`
-7. Deploy to Vercel.
+   - Shipping: `/api/webhooks/shipping` — see [Biteship webhook](#biteship-webhook) below
+7. Deploy to Vercel. Set the Biteship webhook env vars on Vercel (Production + Preview) and redeploy so they take effect.
+
+## Biteship webhook
+
+Biteship allows **one URL per event** (`order.status`, `order.waybill_id`). Point the dashboard webhook at this app; do not create a second webhook for the same events.
+
+| Field | Value |
+| --- | --- |
+| URL | `https://<production-host>/api/webhooks/shipping` |
+| Events | `order.status`, `order.waybill_id` (`order.price` is unused) |
+| Header key | `X-Biteship-Webhook-Token` |
+| Header secret | same value as `BITESHIP_WEBHOOK_SECRET` |
+
+When you click save in the Biteship dashboard, they POST an empty `application/json` body (no signature) and expect `{ "ok": true }`. Real `order.status` / `order.waybill_id` payloads still require `X-Biteship-Webhook-Token`.
+
+After a verified delivery, the handler updates the CRM `shipments` row (when `biteship_order_id` matches) and **forwards** the same JSON to the legacy packing app so offline packing keeps getting status updates.
+
+| Env (this Vercel project) | Purpose |
+| --- | --- |
+| `BITESHIP_API_KEY` | Create/track orders (already required) |
+| `BITESHIP_WEBHOOK_SECRET` | Inbound auth (`X-Biteship-Webhook-Token`) |
+| `BITESHIP_WEBHOOK_FORWARD_URL` | Packing fan-out, e.g. `https://offline-sales-packing.vercel.app/api/biteship/webhook` |
+| `BITESHIP_WEBHOOK_SIGNATURE_KEY` | Header **name** packing expects (e.g. `X-Biteship-Signature`) |
+| `BITESHIP_WEBHOOK_SIGNATURE_SECRET` | Header **value** packing expects |
+
+Packing’s Vercel secrets may be **Sensitive** (not copyable). Rotate them: set a new key/secret on packing, copy the same pair here, redeploy packing, and switch the Biteship URL to this app in the same window. Unknown CRM shipments still return `200` when a forward URL is set, so packing-only orders are not retried.
+
+The **Shipments** page lists CRM rows booked from Warehouse **Generate label** and overlays live Biteship retrieve-order status. Test order IDs (`BITESHIP_TEST_*`) are only for API activation, not production.
 
 ## Mobile field app (Expo Go)
 
@@ -65,7 +92,7 @@ node scripts/smoke-staff-api.mjs   # API smoke (needs STAFF_API_ALLOW_DEMO or de
 - **Orders (OMS)** — WA-cart & agent orders, lifecycle, payment links, issue flags, warehouse notices.
 - **Warehouse (WMS)** — fulfillment queue, stock health, notices.
 - **Pack Station** — auto-generated shipping labels with scannable AWB barcode, scan-to-pack flow (scan label → sequential per-product barcode scanning with quantity tracking), timestamped + attributed scan log, and a downloadable throughput/accountability report (summary + scan-level CSV).
-- **Shipments** — Biteship rates/tracking timelines.
+- **Shipments** — Biteship rates, live retrieve-order status/timeline, tracking webhook + fan-out to the legacy packing app.
 - **Dashboards** — sales (revenue, growing/declining SKUs, retention) and CS (cases, chats, response time).
 - **Settings** — integration status, team, RBAC matrix, theme.
 

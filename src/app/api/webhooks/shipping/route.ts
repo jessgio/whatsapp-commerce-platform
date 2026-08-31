@@ -9,9 +9,19 @@ export const runtime = "nodejs";
 
 const FORWARD_TIMEOUT_MS = 8_000;
 
+/** Biteship pings GET + empty JSON POST when saving the webhook; both must be 200. */
+export async function GET() {
+  return NextResponse.json({ ok: true });
+}
+
 /** Biteship tracking webhook -> CRM shipment + optional fan-out to legacy packing. */
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
+
+  // Install probe: empty / `{}` body, often without the signature header.
+  if (isInstallProbe(rawBody)) {
+    return NextResponse.json({ ok: true });
+  }
 
   // This endpoint had no authentication at all: anyone could mark orders
   // delivered. Demo mode has nothing to protect, so only live data fails closed.
@@ -104,6 +114,20 @@ export async function POST(req: NextRequest) {
 
   await forwarded;
   return NextResponse.json({ ok: true, matched: true });
+}
+
+/** True when Biteship is only checking the URL, not delivering an order event. */
+function isInstallProbe(rawBody: string): boolean {
+  const trimmed = rawBody.trim();
+  if (!trimmed) return true;
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+    if (parsed === null || parsed === undefined) return true;
+    if (typeof parsed !== "object" || Array.isArray(parsed)) return false;
+    return Object.keys(parsed as Record<string, unknown>).length === 0;
+  } catch {
+    return false;
+  }
 }
 
 /**
