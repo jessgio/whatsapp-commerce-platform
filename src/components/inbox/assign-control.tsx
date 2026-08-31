@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import {
   assignConversation,
   claimConversationAction,
@@ -22,11 +22,13 @@ export function AssignControl({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState(assigneeId ?? "");
-  const mine = selected === currentUserId;
-
-  useEffect(() => {
+  const incoming = `${conversationId}:${assigneeId ?? ""}`;
+  const [synced, setSynced] = useState(incoming);
+  if (incoming !== synced) {
+    setSynced(incoming);
     setSelected(assigneeId ?? "");
-  }, [assigneeId]);
+  }
+  const mine = selected === currentUserId;
 
   function run(action: () => Promise<{ ok: boolean; error?: string }>) {
     startTransition(async () => {

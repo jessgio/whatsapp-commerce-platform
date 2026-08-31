@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { FileSpreadsheet, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui";
 import { importContactsAction, type ImportContactsResult } from "@/app/(portal)/customers/actions";
@@ -60,13 +61,14 @@ function ImportContactsModal({ onClose }: { onClose: () => void }) {
           profile; new numbers are added with pending consent.
         </p>
 
-        <a
+        <Link
           href="/customers/import-template"
+          prefetch={false}
           className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-merlot hover:underline"
         >
           <FileSpreadsheet size={15} />
           Download Excel template
-        </a>
+        </Link>
 
         <form onSubmit={onSubmit} className="mt-4 space-y-3">
           <label className="block">
