@@ -65,19 +65,15 @@ export default async function ShipmentsPage() {
         <p className="mb-3 text-xs text-muted">
           Status diambil live dari Biteship Orders API.
         </p>
-      ) : (
-        <p className="mb-3 text-xs text-muted">
-          Set BITESHIP_API_KEY to show live courier status from Biteship.
-        </p>
-      )}
+      ) : null}
 
       {shipments.length === 0 ? (
         <div className="rounded-[16px] border border-dashed border-border bg-surface px-6 py-12 text-center">
           <p className="text-sm font-medium text-foreground">No shipments yet</p>
           <p className="mt-1 text-sm text-muted">
             {connected
-              ? "Biteship is connected, but there are no booked shipments in the CRM yet. Pack an order in Warehouse to create one, or set BITESHIP_TEST_DELIVERED_ORDER_ID / BITESHIP_TEST_CANCELLED_ORDER_ID to preview a Biteship order."
-              : "Packed orders booked with Biteship will show tracking here."}
+              ? "Belum ada kiriman yang di-book. Pack order di Warehouse (Generate label) supaya muncul di sini."
+              : "Kiriman yang di-pack dan di-book ke kurir akan tampil di sini."}
           </p>
         </div>
       ) : (
