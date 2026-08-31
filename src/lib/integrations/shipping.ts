@@ -1,5 +1,7 @@
 import { env } from "@/lib/env";
 import { fetchWithTimeout } from "@/lib/http";
+import { mapBiteshipToShipmentStatus, normalizeBiteshipStatus } from "@/lib/biteship-status";
+import type { Shipment } from "@/lib/types";
 
 const BASE = "https://api.biteship.com/v1";
 
@@ -158,4 +160,164 @@ export async function createShipment(
   } catch (e) {
     return { ok: false, error: String(e) };
   }
+}
+
+export type BiteshipLiveOrder = {
+  id: string;
+  status: string;
+  trackingNumber: string | null;
+  courier: string;
+  service: string;
+  recipientName: string;
+  destination: string;
+  cost: number;
+  link: string | null;
+  history: { status: string; note: string; at: string }[];
+};
+
+type BiteshipOrderResponse = {
+  success?: boolean;
+  id?: string;
+  status?: string;
+  price?: number;
+  destination?: { contact_name?: string; address?: string };
+  courier?: {
+    waybill_id?: string;
+    company?: string;
+    type?: string;
+    link?: string;
+    history?: { status?: string; note?: string; updated_at?: string }[];
+  };
+};
+
+export async function getBiteshipOrder(id: string): Promise<BiteshipLiveOrder | null> {
+  if (!configured() || !id.trim()) return null;
+  try {
+    const res = await fetchWithTimeout(`${BASE}/orders/${encodeURIComponent(id.trim())}`, {
+      timeoutMs: 8_000,
+      headers: { Authorization: env.shipping.biteshipKey },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      console.error("[shipping] getBiteshipOrder", id, res.status);
+      return null;
+    }
+    const json = (await res.json()) as BiteshipOrderResponse;
+    const history = (json.courier?.history ?? []).map((h) => ({
+      status: normalizeBiteshipStatus(String(h.status ?? "")),
+      note: h.note ?? "",
+      at: h.updated_at ?? "",
+    }));
+    return {
+      id: json.id ?? id,
+      status: normalizeBiteshipStatus(String(json.status ?? "")),
+      trackingNumber: json.courier?.waybill_id ?? null,
+      courier: json.courier?.company ?? "",
+      service: json.courier?.type ?? "",
+      recipientName: json.destination?.contact_name ?? "",
+      destination: json.destination?.address ?? "",
+      cost: Number(json.price ?? 0),
+      link: json.courier?.link ?? null,
+      history,
+    };
+  } catch (e) {
+    console.error("[shipping] getBiteshipOrder failed", id, e);
+    return null;
+  }
+}
+
+export async function getBiteshipOrders(
+  ids: string[],
+): Promise<Map<string, BiteshipLiveOrder>> {
+  const unique = [...new Set(ids.map((id) => id.trim()).filter(Boolean))].slice(0, 30);
+  const out = new Map<string, BiteshipLiveOrder>();
+  const results = await Promise.allSettled(unique.map((id) => getBiteshipOrder(id)));
+  for (let i = 0; i < unique.length; i++) {
+    const result = results[i];
+    if (result.status === "fulfilled" && result.value) {
+      out.set(unique[i], result.value);
+    }
+  }
+  return out;
+}
+
+export type BoardShipment = Shipment & {
+  biteshipStatus: string | null;
+  biteshipLink: string | null;
+  live: boolean;
+};
+
+export async function loadShipmentBoard(local: Shipment[]): Promise<{
+  shipments: BoardShipment[];
+  connected: boolean;
+}> {
+  const connected = configured();
+  if (!connected) {
+    return {
+      shipments: local.map((s) => ({
+        ...s,
+        biteshipStatus: null,
+        biteshipLink: null,
+        live: false,
+      })),
+      connected: false,
+    };
+  }
+
+  const extraIds = [
+    env.shipping.testDeliveredOrderId,
+    env.shipping.testCancelledOrderId,
+  ].filter(Boolean);
+  const ids = [
+    ...local.map((s) => s.biteshipOrderId).filter((id): id is string => Boolean(id)),
+    ...extraIds,
+  ];
+  const liveById = await getBiteshipOrders(ids);
+
+  const shipments: BoardShipment[] = local.map((s) => {
+    const live = s.biteshipOrderId ? liveById.get(s.biteshipOrderId) : undefined;
+    if (!live) {
+      return { ...s, biteshipStatus: null, biteshipLink: null, live: false };
+    }
+    return {
+      ...s,
+      status: mapBiteshipToShipmentStatus(live.status),
+      trackingNumber: live.trackingNumber || s.trackingNumber,
+      courier: live.courier || s.courier,
+      service: live.service || s.service,
+      events: live.history.length
+        ? live.history.map((h) => ({ status: h.status, note: h.note, at: h.at }))
+        : s.events,
+      biteshipStatus: live.status,
+      biteshipLink: live.link,
+      live: true,
+    };
+  });
+
+  const seen = new Set(
+    shipments.map((s) => s.biteshipOrderId).filter((id): id is string => Boolean(id)),
+  );
+  for (const [id, live] of liveById) {
+    if (seen.has(id)) continue;
+    shipments.unshift({
+      id: `biteship-${id}`,
+      orderId: "",
+      orderCode: id.slice(0, 10),
+      customerName: live.recipientName || "Biteship",
+      courier: live.courier,
+      service: live.service,
+      trackingNumber: live.trackingNumber ?? id,
+      status: mapBiteshipToShipmentStatus(live.status),
+      cost: live.cost,
+      destinationCity: live.destination,
+      events: live.history.map((h) => ({ status: h.status, note: h.note, at: h.at })),
+      createdAt: live.history[0]?.at || new Date().toISOString(),
+      biteshipOrderId: id,
+      biteshipStatus: live.status,
+      biteshipLink: live.link,
+      live: true,
+    });
+  }
+
+  return { shipments, connected: true };
 }

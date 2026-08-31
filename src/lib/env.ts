@@ -48,12 +48,32 @@ export const env = {
     biteshipKey: process.env.BITESHIP_API_KEY ?? "",
     /** Shared secret expected in the `x-biteship-signature` webhook header. */
     webhookSecret: process.env.BITESHIP_WEBHOOK_SECRET ?? "",
+    /**
+     * Optional fan-out: after we accept a Biteship delivery, POST the same
+     * payload to the legacy packing app. Biteship only allows one URL per event.
+     */
+    webhookForwardUrl: process.env.BITESHIP_WEBHOOK_FORWARD_URL ?? "",
+    /**
+     * Header name + static secret the packing app expects (copy from that
+     * project's BITESHIP_WEBHOOK_SIGNATURE_KEY / _SECRET). Biteship will send
+     * our CRM token; we re-attach the packing header on the forwarded POST.
+     */
+    webhookForwardSignatureKey:
+      process.env.BITESHIP_WEBHOOK_FORWARD_SIGNATURE_KEY ??
+      process.env.BITESHIP_WEBHOOK_SIGNATURE_KEY ??
+      "",
+    webhookForwardSignatureSecret:
+      process.env.BITESHIP_WEBHOOK_FORWARD_SIGNATURE_SECRET ??
+      process.env.BITESHIP_WEBHOOK_SIGNATURE_SECRET ??
+      "",
     originPostalCode: process.env.WAREHOUSE_ORIGIN_POSTAL_CODE ?? "12190",
     originContactName: process.env.WAREHOUSE_ORIGIN_CONTACT_NAME ?? "Warehouse",
     originContactPhone: process.env.WAREHOUSE_ORIGIN_CONTACT_PHONE ?? "081234567890",
     originAddress:
       process.env.WAREHOUSE_ORIGIN_ADDRESS ??
       "Jl. Sudirman No. 1, Jakarta Selatan",
+    testDeliveredOrderId: process.env.BITESHIP_TEST_DELIVERED_ORDER_ID ?? "",
+    testCancelledOrderId: process.env.BITESHIP_TEST_CANCELLED_ORDER_ID ?? "",
   },
 } as const;
 

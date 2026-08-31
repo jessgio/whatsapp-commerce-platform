@@ -1,4 +1,9 @@
 import { Badge } from "@/components/ui";
+import {
+  BITESHIP_STATUS_TONES,
+  biteshipStatusLabel,
+  normalizeBiteshipStatus,
+} from "@/lib/biteship-status";
 import type {
   CasePriority,
   CaseStatus,
@@ -110,4 +115,10 @@ export function SyncBadge({ state }: { state: SyncState }) {
 
 export function ShipmentBadge({ status }: { status: ShipmentStatus }) {
   return <StatusBadge map={SHIPMENT} value={status} />;
+}
+
+export function BiteshipStatusBadge({ status }: { status: string }) {
+  const key = normalizeBiteshipStatus(status);
+  const tone = BITESHIP_STATUS_TONES[key] ?? "neutral";
+  return <Badge tone={tone}>{biteshipStatusLabel(status)}</Badge>;
 }

@@ -198,6 +198,7 @@ export interface Shipment {
   destinationCity: string;
   events: ShipmentEvent[];
   createdAt: string;
+  biteshipOrderId?: string | null;
 }
 
 export interface PackProgressItem {

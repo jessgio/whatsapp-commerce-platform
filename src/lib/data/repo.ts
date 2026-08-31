@@ -1003,6 +1003,7 @@ function mapShipment(r: any): Shipment {
     destinationCity: r.destination_city ?? "",
     events,
     createdAt: r.created_at,
+    biteshipOrderId: r.biteship_order_id ?? null,
   };
 }
 
