@@ -40,7 +40,7 @@ export function Composer({
         <input
           name="body"
           autoComplete="off"
-          placeholder={windowOpen ? "Type a reply…" : "Window closed — a template is required"}
+          placeholder={windowOpen ? "Type a reply…" : "Window closed - a template is required"}
           className="flex-1 rounded-lg border border-border bg-surface-muted px-3 py-2.5 text-sm outline-none focus:border-merlot"
         />
         <button

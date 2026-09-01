@@ -44,34 +44,51 @@ Copy `.env.example` → `.env.local` and fill in credentials to go live.
    - WhatsApp: `/api/webhooks/whatsapp` (verify token = `WHATSAPP_WEBHOOK_VERIFY_TOKEN`)
    - Payments: `/api/webhooks/payment`
    - Shipping: `/api/webhooks/shipping` — see [Biteship webhook](#biteship-webhook) below
-7. Deploy to Vercel. Set the Biteship webhook env vars on Vercel (Production + Preview) and redeploy so they take effect.
+7. Deploy to Vercel. After changing env vars, **Redeploy** production — new keys are not picked up by a running deployment.
 
 ## Biteship webhook
 
-Biteship allows **one URL per event** (`order.status`, `order.waybill_id`). Point the dashboard webhook at this app; do not create a second webhook for the same events.
+Production host: `https://whatsapp.aerisbeaute.com`. Handler: `src/app/api/webhooks/shipping/route.ts`.
+
+Biteship allows **one URL per event**. Do not create a second webhook for `order.status` / `order.waybill_id` — edit or replace **Aeris Marketing Order Status** (it pointed at the packing app).
+
+### Dashboard form
 
 | Field | Value |
 | --- | --- |
-| URL | `https://<production-host>/api/webhooks/shipping` |
-| Events | `order.status`, `order.waybill_id` (`order.price` is unused) |
+| URL | `https://whatsapp.aerisbeaute.com/api/webhooks/shipping` |
+| Events | `order.status`, `order.waybill_id` (skip `order.price`) |
 | Header key | `X-Biteship-Webhook-Token` |
 | Header secret | same value as `BITESHIP_WEBHOOK_SECRET` |
 
-When you click save in the Biteship dashboard, they POST an empty `application/json` body (no signature) and expect `{ "ok": true }`. Real `order.status` / `order.waybill_id` payloads still require `X-Biteship-Webhook-Token`.
+Saving the webhook sends `GET` and an empty `application/json` POST **without** a signature. Both must return `{ "ok": true }`. Real order events still require the token.
 
-After a verified delivery, the handler updates the CRM `shipments` row (when `biteship_order_id` matches) and **forwards** the same JSON to the legacy packing app so offline packing keeps getting status updates.
+After a verified delivery the handler updates the CRM `shipments` row (when `biteship_order_id` matches) and **forwards** the same JSON to the legacy packing app.
 
-| Env (this Vercel project) | Purpose |
+### Vercel env (this project)
+
+Set on **Production and Preview**, then redeploy.
+
+| Env | Purpose |
 | --- | --- |
-| `BITESHIP_API_KEY` | Create/track orders (already required) |
-| `BITESHIP_WEBHOOK_SECRET` | Inbound auth (`X-Biteship-Webhook-Token`) |
-| `BITESHIP_WEBHOOK_FORWARD_URL` | Packing fan-out, e.g. `https://offline-sales-packing.vercel.app/api/biteship/webhook` |
+| `BITESHIP_API_KEY` | Create / retrieve orders |
+| `BITESHIP_WEBHOOK_SECRET` | Inbound auth (`X-Biteship-Webhook-Token`). Missing → `503` and log `BITESHIP_WEBHOOK_SECRET is not set` |
+| `BITESHIP_WEBHOOK_FORWARD_URL` | `https://offline-sales-packing.vercel.app/api/biteship/webhook` |
 | `BITESHIP_WEBHOOK_SIGNATURE_KEY` | Header **name** packing expects (e.g. `X-Biteship-Signature`) |
 | `BITESHIP_WEBHOOK_SIGNATURE_SECRET` | Header **value** packing expects |
 
-Packing’s Vercel secrets may be **Sensitive** (not copyable). Rotate them: set a new key/secret on packing, copy the same pair here, redeploy packing, and switch the Biteship URL to this app in the same window. Unknown CRM shipments still return `200` when a forward URL is set, so packing-only orders are not retried.
+Packing’s Vercel secrets may be **Sensitive** (Copy disabled). Rotate: set a new key/secret on packing, put the same pair here, redeploy packing, and switch the Biteship URL to this app in the same window. Unknown CRM shipments still return `200` when a forward URL is set, so packing-only orders are not retried.
 
-The **Shipments** page lists CRM rows booked from Warehouse **Generate label** and overlays live Biteship retrieve-order status. Test order IDs (`BITESHIP_TEST_*`) are only for API activation, not production.
+### Troubleshooting
+
+| Response / log | Meaning |
+| --- | --- |
+| `200` `{ "ok": true }` on empty POST | Install probe — URL can be saved |
+| `403` `bad signature` | Token header ≠ `BITESHIP_WEBHOOK_SECRET` |
+| `503` `not configured` | `BITESHIP_WEBHOOK_SECRET` missing on that deployment — add env and redeploy |
+| Packing `403` on forward | Rotate packing signature env so it matches CRM |
+
+**Shipments** lists CRM rows booked from Warehouse **Generate label**, then overlays live Biteship retrieve-order status. Empty list is expected until an order is packed. `BITESHIP_TEST_*` IDs are only for Biteship API activation, not the UI.
 
 ## Mobile field app (Expo Go)
 

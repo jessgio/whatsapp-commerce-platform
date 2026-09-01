@@ -146,7 +146,7 @@ export default function ConversationScreen() {
         <TextInput
           value={body}
           onChangeText={setBody}
-          placeholder={windowOpen ? "Type a reply…" : "Window closed — free text may fail"}
+          placeholder={windowOpen ? "Type a reply…" : "Window closed - free text may fail"}
           placeholderTextColor={colors.muted}
           multiline
           style={styles.input}
