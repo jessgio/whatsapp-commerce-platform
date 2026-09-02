@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button, Select } from "@/components/ui";
+import { DatePicker } from "@/components/date-picker";
 import { CityCombobox } from "@/components/leads/city-combobox";
 import {
   COUNTRY_DIAL_CODES,
@@ -175,6 +176,30 @@ export const LeadFormField = React.memo(function LeadFormField({
     );
   }
 
+  if (field.type === "date") {
+    return (
+      <div>
+        <label htmlFor={field.id} className="text-sm font-medium text-foreground">
+          {field.label}
+          {!field.required ? (
+            <span className="font-normal text-muted"> (Opsional)</span>
+          ) : null}
+        </label>
+        <DatePicker
+          name={field.key}
+          value={String(value ?? "")}
+          onChange={(iso) => onValue(field.key, iso)}
+          max={new Date().toISOString().slice(0, 10)}
+          className="mt-1.5"
+          placeholder="dd/mm/yyyy"
+        />
+        {field.helpText ? (
+          <p className="mt-1 text-xs text-muted">{field.helpText}</p>
+        ) : null}
+      </div>
+    );
+  }
+
   if (field.type === "textarea") {
     return (
       <div>
@@ -203,12 +228,7 @@ export const LeadFormField = React.memo(function LeadFormField({
     );
   }
 
-  const inputType =
-    field.type === "date"
-      ? "date"
-      : field.type === "email"
-        ? "email"
-        : "text";
+  const inputType = field.type === "email" ? "email" : "text";
 
   return (
     <div>
@@ -277,6 +297,13 @@ export function LeadForm({
     const termsField = fields.find((f) => f.key === "terms");
     if (termsField && !acceptTerms) {
       setError("Anda harus menyetujui pernyataan Privasi Data.");
+      return;
+    }
+    const missingDate = fields.find(
+      (f) => f.type === "date" && f.required && !String(values[f.key] ?? "").trim(),
+    );
+    if (missingDate) {
+      setError(`${missingDate.label} wajib diisi.`);
       return;
     }
 

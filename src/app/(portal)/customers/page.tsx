@@ -38,6 +38,7 @@ export default async function CustomersPage() {
         customers={customers}
         total={total}
         canSeePii={canSeePii}
+        canEdit={canEdit}
         segments={segments}
       />
     </div>

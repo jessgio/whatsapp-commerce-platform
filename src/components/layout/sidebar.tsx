@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Headset,
@@ -60,9 +61,14 @@ export function Sidebar({ items }: { items: NavItem[] }) {
   return (
     <aside className="hidden w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex">
       <div className="flex items-center gap-2.5 px-5 py-5">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-merlot text-sm font-bold text-primary-foreground">
-          A
-        </span>
+        <Image
+          src="/brand/aeris-mark.png"
+          alt="Aeris Beauté"
+          width={32}
+          height={32}
+          className="h-8 w-8 shrink-0 object-contain invert"
+          priority
+        />
         <div className="leading-tight">
           <div className="text-sm font-semibold text-cream">Aeris Beaute</div>
           <div className="text-[11px] text-taupe">Commerce Platform</div>

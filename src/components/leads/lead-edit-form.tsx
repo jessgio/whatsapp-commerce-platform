@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Select } from "@/components/ui";
+import { DatePicker } from "@/components/date-picker";
 import { CityCombobox } from "@/components/leads/city-combobox";
 import {
   COUNTRY_DIAL_CODES,
@@ -95,16 +96,13 @@ export function LeadEditForm({
       </div>
 
       <div>
-        <label htmlFor="birthDate" className="text-sm font-medium text-foreground">
-          Tanggal Lahir
-        </label>
-        <input
-          id="birthDate"
-          type="date"
-          required
+        <span className="text-sm font-medium text-foreground">Tanggal Lahir</span>
+        <DatePicker
           value={birthDate}
-          onChange={(e) => setBirthDate(e.target.value)}
-          className={fieldClass}
+          onChange={setBirthDate}
+          max={new Date().toISOString().slice(0, 10)}
+          className="mt-1.5"
+          placeholder="dd/mm/yyyy"
         />
       </div>
 

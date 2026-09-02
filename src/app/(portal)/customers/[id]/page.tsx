@@ -5,6 +5,7 @@ import { requirePermission } from "@/lib/guard";
 import { can } from "@/lib/rbac";
 import { getCustomer, getCustomerAddresses, listOrdersForCustomer } from "@/lib/data/repo";
 import { Avatar, Badge, Button, Card, CardBody, CardHeader, CardTitle, Table, Th, Td } from "@/components/ui";
+import { CustomerRowActions } from "@/components/customers/customer-row-actions";
 import { ConsentBadge, OrderBadge, PaymentBadge } from "@/components/status";
 import { formatIDR, formatIDRCompact, formatDate } from "@/lib/format";
 
@@ -21,6 +22,7 @@ export default async function CustomerDetailPage({
   ]);
   if (!customer) notFound();
   const canSeePii = can(user.role, "customers.pii");
+  const canEdit = can(user.role, "customers.edit");
 
   return (
     <div className="space-y-6">
@@ -46,11 +48,12 @@ export default async function CustomerDetailPage({
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <ConsentBadge status={customer.consentStatus} />
           {customer.segments.map((s) => (
             <Badge key={s} tone="merlot">{s}</Badge>
           ))}
+          {canEdit ? <CustomerRowActions customer={customer} afterDelete="list" /> : null}
         </div>
       </div>
 

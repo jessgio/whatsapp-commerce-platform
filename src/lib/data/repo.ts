@@ -73,9 +73,8 @@ function liveRow<T>(
 /**
  * Unwraps an exact-count read.
  *
- * The list readers below are all capped. Counting the rows they return would
- * report the cap rather than the truth, so anything user-visible asks Postgres
- * for the real total with a HEAD request — no rows cross the wire.
+ * Prefer this over `rows.length` whenever a list reader is paged or capped
+ * (orders, etc.) so the UI shows the real Postgres total.
  */
 function liveTotal(
   scope: string,
@@ -89,18 +88,26 @@ function liveTotal(
 }
 
 const HEAD_COUNT = { count: "exact", head: true } as const;
+/** PostgREST default max-rows is 1000; page past it so the CRM is not silently capped. */
+const PAGE_SIZE = 1000;
 
 /* ---------- Customers ---------- */
 
 export async function listCustomers(): Promise<Customer[]> {
   if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
-    const res = await supabase
-      .from("customers")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(500);
-    return liveRows("listCustomers", res).map(mapCustomer);
+    const collected: Customer[] = [];
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const res = await supabase
+        .from("customers")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+      const batch = liveRows("listCustomers", res);
+      collected.push(...batch.map(mapCustomer));
+      if (batch.length < PAGE_SIZE) break;
+    }
+    return collected;
   }
   return DEMO_CUSTOMERS;
 }
@@ -120,6 +127,94 @@ export async function getCustomer(id: string): Promise<Customer | null> {
     return row ? mapCustomer(row) : null;
   }
   return DEMO_CUSTOMERS.find((c) => c.id === id) ?? null;
+}
+
+export type CustomerProfilePatch = {
+  name: string;
+  phone: string;
+  waId: string;
+  email: string | null;
+  city: string | null;
+  birthDate: string | null;
+};
+
+export type CustomerWriteResult = { ok: true } | { ok: false; error: string };
+
+export async function updateCustomer(
+  id: string,
+  patch: CustomerProfilePatch,
+): Promise<CustomerWriteResult> {
+  if (!shouldUseSupabaseData()) {
+    const existing = DEMO_CUSTOMERS.find((c) => c.id === id);
+    if (!existing) return { ok: false, error: "Contact not found." };
+    const clash = DEMO_CUSTOMERS.find((c) => c.id !== id && c.waId === patch.waId);
+    if (clash) return { ok: false, error: "Another contact already uses that WhatsApp number." };
+    existing.name = patch.name;
+    existing.phone = patch.phone;
+    existing.waId = patch.waId;
+    existing.email = patch.email;
+    existing.city = patch.city;
+    existing.birthDate = patch.birthDate;
+    return { ok: true };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("customers")
+    .update({
+      name: patch.name,
+      phone: patch.phone,
+      wa_id: patch.waId,
+      email: patch.email,
+      city: patch.city,
+      birth_date: patch.birthDate,
+    })
+    .eq("id", id);
+  if (error) {
+    if (error.code === "23505") {
+      return { ok: false, error: "Another contact already uses that WhatsApp number." };
+    }
+    console.error("[repo] updateCustomer failed", error);
+    return { ok: false, error: "Could not update this contact." };
+  }
+  return { ok: true };
+}
+
+export async function deleteCustomer(id: string): Promise<CustomerWriteResult> {
+  if (!shouldUseSupabaseData()) {
+    const idx = DEMO_CUSTOMERS.findIndex((c) => c.id === id);
+    if (idx === -1) return { ok: false, error: "Contact not found." };
+    if (DEMO_CUSTOMERS[idx].orderCount > 0) {
+      return { ok: false, error: "Cannot delete a contact that has orders." };
+    }
+    DEMO_CUSTOMERS.splice(idx, 1);
+    return { ok: true };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data: existing, error: readErr } = await supabase
+    .from("customers")
+    .select("id, order_count")
+    .eq("id", id)
+    .maybeSingle();
+  if (readErr) {
+    console.error("[repo] deleteCustomer lookup failed", readErr);
+    return { ok: false, error: "Could not delete this contact." };
+  }
+  if (!existing) return { ok: false, error: "Contact not found." };
+  if ((existing.order_count ?? 0) > 0) {
+    return { ok: false, error: "Cannot delete a contact that has orders." };
+  }
+
+  const { error } = await supabase.from("customers").delete().eq("id", id);
+  if (error) {
+    if (error.code === "23503") {
+      return { ok: false, error: "Cannot delete a contact that still has related records." };
+    }
+    console.error("[repo] deleteCustomer failed", error);
+    return { ok: false, error: "Could not delete this contact." };
+  }
+  return { ok: true };
 }
 
 export type CustomerImportInput = {
