@@ -19,6 +19,7 @@ import {
   assignDemoConversation,
   demoMessages,
 } from "@/lib/demo/data";
+import { mergeImportedCustomerTags } from "@/lib/customers/source";
 import type {
   Address,
   AppUser,
@@ -234,11 +235,6 @@ export type CustomerImportResult = {
   failed: { row: number; reason: string }[];
 };
 
-function mergeTags(existing: string[] | null | undefined, extra: string[]): string[] {
-  const out = new Set<string>([...(existing ?? []), ...extra, "imported"]);
-  return [...out];
-}
-
 export async function importCustomers(
   rows: CustomerImportInput[],
 ): Promise<CustomerImportResult> {
@@ -259,7 +255,7 @@ export async function importCustomers(
         if (row.email) existing.email = row.email;
         if (row.city) existing.city = row.city;
         if (row.birthDate) existing.birthDate = row.birthDate;
-        existing.tags = mergeTags(existing.tags, row.tags);
+        existing.tags = mergeImportedCustomerTags(existing.tags, row.tags);
         updated += 1;
         continue;
       }
@@ -274,7 +270,7 @@ export async function importCustomers(
         consentStatus: "pending",
         consentChannel: "import",
         segments: ["New"],
-        tags: mergeTags([], row.tags),
+        tags: mergeImportedCustomerTags([], row.tags),
         lifetimeValue: 0,
         orderCount: 0,
         firstSeenAt: now,
@@ -301,7 +297,7 @@ export async function importCustomers(
       continue;
     }
 
-    const tags = mergeTags(
+    const tags = mergeImportedCustomerTags(
       Array.isArray(existing?.tags) ? (existing.tags as string[]) : [],
       row.tags,
     );

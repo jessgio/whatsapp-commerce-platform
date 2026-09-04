@@ -7,8 +7,10 @@ import { Avatar, Select, Table, Th, Td } from "@/components/ui";
 import { ConsentBadge } from "@/components/status";
 import { formatIDRCompact, formatDate, formatDateTime, formatNumber } from "@/lib/format";
 import { customerMatchesRules, type SegmentDefinition } from "@/lib/segments";
+import { matchesCustomerSource, type CustomerSource } from "@/lib/customers/source";
 import type { Customer } from "@/lib/types";
 import { CustomerRowActions } from "@/components/customers/customer-row-actions";
+import { CustomerTags } from "@/components/customers/source-chips";
 
 const PAGE_SIZE = 50;
 
@@ -42,6 +44,7 @@ export function CustomerTable({
 }) {
   const [q, setQ] = useState("");
   const [segment, setSegment] = useState("all");
+  const [source, setSource] = useState<"all" | CustomerSource>("all");
   const [sort, setSort] = useState<SortKey>("newest");
   const [page, setPage] = useState(0);
 
@@ -61,6 +64,7 @@ export function CustomerTable({
         (c.city?.toLowerCase().includes(term) ?? false);
 
       if (!matchesTerm) return false;
+      if (!matchesCustomerSource(c, source)) return false;
 
       if (segment === "all") return true;
       if (saved) return customerMatchesRules(c, saved.rules, now);
@@ -79,9 +83,9 @@ export function CustomerTable({
       if (sort === "oldest") return signedMs(a) - signedMs(b);
       return signedMs(b) - signedMs(a);
     });
-  }, [customers, q, segment, segments, sort]);
+  }, [customers, q, segment, segments, sort, source]);
 
-  const filtering = Boolean(q.trim()) || segment !== "all";
+  const filtering = Boolean(q.trim()) || segment !== "all" || source !== "all";
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount - 1);
   const visible = filtered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
@@ -124,6 +128,19 @@ export function CustomerTable({
           ]}
         />
         <Select
+          value={source}
+          onChange={(next) => {
+            setSource(next as "all" | CustomerSource);
+            setPage(0);
+          }}
+          className="w-40"
+          options={[
+            { value: "all", label: "All sources" },
+            { value: "internal", label: "Internal" },
+            { value: "voucher", label: "Voucher" },
+          ]}
+        />
+        <Select
           value={sort}
           onChange={(next) => {
             setSort(next as SortKey);
@@ -149,6 +166,7 @@ export function CustomerTable({
         <thead>
           <tr>
             <Th>Customer</Th>
+            <Th>Tags</Th>
             <Th>Consent</Th>
             <Th>Segments</Th>
             <Th>Signed up</Th>
@@ -174,6 +192,9 @@ export function CustomerTable({
                     </div>
                   </div>
                 </Link>
+              </Td>
+              <Td>
+                <CustomerTags customer={c} />
               </Td>
               <Td><ConsentBadge status={c.consentStatus} /></Td>
               <Td>

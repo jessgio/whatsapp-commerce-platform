@@ -21,6 +21,10 @@ export default async function SettingsPage() {
     },
     { name: "Biteship 3PL", ok: Boolean(env.shipping.biteshipKey) },
     { name: "Resend (email)", ok: Boolean(env.resendApiKey) },
+    {
+      name: "Cloudflare Turnstile",
+      ok: Boolean(env.turnstile.siteKey && env.turnstile.secretKey),
+    },
   ];
 
   const allPerms = ROLE_PERMISSIONS.admin;

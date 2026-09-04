@@ -6,6 +6,7 @@ import { resolveCanonicalCity } from "@/lib/cities";
 import { parseLeadFields } from "@/lib/lead-validation";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { verifyTurnstileToken } from "@/lib/turnstile-verify";
 
 /** Edit tokens are the only credential guarding this PII, so cap guessing. */
 const TOKEN_LOOKUP_LIMIT = { scope: "leads:profile", limit: 30, windowSeconds: 3600 };
@@ -39,10 +40,19 @@ export async function PATCH(req: NextRequest) {
     countryCode?: string;
     email?: string;
     city?: string;
+    turnstileToken?: string;
   } | null;
 
   if (!body) {
     return NextResponse.json({ ok: false, error: "Permintaan tidak valid." }, { status: 400 });
+  }
+
+  const challenge = await verifyTurnstileToken(req, body.turnstileToken);
+  if (!challenge.ok) {
+    return NextResponse.json(
+      { ok: false, error: challenge.error },
+      { status: 400 },
+    );
   }
 
   const token = body.token?.trim() ?? "";

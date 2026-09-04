@@ -8,6 +8,7 @@ import { createSupabaseAdminClient, createSupabaseServerClient } from "@/lib/sup
 import { DEMO_COOKIE, getCurrentUser } from "@/lib/auth";
 import { homePathForRole } from "@/lib/rbac";
 import { DEMO_USERS } from "@/lib/demo/data";
+import { verifyTurnstileFormData } from "@/lib/turnstile-verify";
 
 function requestOrigin(headerStore: Headers): string {
   const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host");
@@ -29,8 +30,15 @@ export async function signInDemo(userId: string) {
   redirect(homePathForRole(user.role));
 }
 
-export async function signInWithGoogle() {
+export async function signInWithGoogle(formData?: FormData) {
   if (!isSupabaseConfigured()) redirect("/login");
+
+  if (formData) {
+    const challenge = await verifyTurnstileFormData(formData);
+    if (!challenge.ok) {
+      redirect(`/login?error=${encodeURIComponent(challenge.error)}`);
+    }
+  }
 
   const origin = requestOrigin(await headers());
   const supabase = await createSupabaseServerClient();
@@ -54,6 +62,11 @@ export async function signInWithGoogle() {
 }
 
 export async function signInWithPassword(formData: FormData) {
+  const challenge = await verifyTurnstileFormData(formData);
+  if (!challenge.ok) {
+    redirect(`/login?error=${encodeURIComponent(challenge.error)}`);
+  }
+
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   if (!isSupabaseConfigured()) return;
@@ -66,6 +79,11 @@ export async function signInWithPassword(formData: FormData) {
 
 export async function signUpWithPassword(formData: FormData) {
   if (!isSupabaseConfigured()) redirect("/login");
+
+  const challenge = await verifyTurnstileFormData(formData);
+  if (!challenge.ok) {
+    redirect(`/signup?error=${encodeURIComponent(challenge.error)}`);
+  }
 
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();

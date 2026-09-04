@@ -14,8 +14,13 @@ export const env = {
   resendApiKey: process.env.RESEND_API_KEY ?? "",
   /** Verified sender, e.g. `Aeris Beauté <hello@aerisbeaute.com>`. */
   emailFrom: process.env.EMAIL_FROM ?? "",
-  /** Public base for QR / edit links, e.g. `https://join.aerisbeaute.com`. */
+  /** Public form base for QR / edit links, e.g. `https://join.aerisbeaute.com`. */
   publicFormBaseUrl: process.env.PUBLIC_FORM_BASE_URL ?? "",
+
+  turnstile: {
+    siteKey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "",
+    secretKey: process.env.TURNSTILE_SECRET_KEY ?? "",
+  },
 
   whatsapp: {
     token: process.env.WHATSAPP_ACCESS_TOKEN ?? "",

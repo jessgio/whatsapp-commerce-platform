@@ -58,7 +58,9 @@ function ImportContactsModal({ onClose }: { onClose: () => void }) {
         </h2>
         <p className="mt-1 text-sm text-muted">
           Upload an Excel file. Matching phone numbers update the existing
-          profile; new numbers are added with pending consent.
+          profile; new numbers are added with pending consent and tagged{" "}
+          <span className="font-medium text-foreground">Internal</span> so you
+          can tell them apart from voucher signups.
         </p>
 
         <Link

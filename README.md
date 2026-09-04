@@ -45,6 +45,7 @@ Copy `.env.example` → `.env.local` and fill in credentials to go live.
    - Payments: `/api/webhooks/payment`
    - Shipping: `/api/webhooks/shipping` — see [Biteship webhook](#biteship-webhook) below
 7. Deploy to Vercel. After changing env vars, **Redeploy** production — new keys are not picked up by a running deployment.
+8. Set Cloudflare Turnstile keys on Vercel (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`). Add `join.aerisbeaute.com` (and the production host) on the widget’s hostname list.
 
 ## Biteship webhook
 
@@ -101,9 +102,31 @@ npm run mobile       # Expo Go (from repo root)
 node scripts/smoke-staff-api.mjs   # API smoke (needs STAFF_API_ALLOW_DEMO or demo mode)
 ```
 
+## Customers
+
+Staff list: **Customers**. Import Excel from **Import contacts**; template at `/customers/import-template`.
+
+| Source | How they get in | Tag (DB) | UI chip | Consent |
+| --- | --- | --- | --- | --- |
+| **Internal** | Excel import | `internal` (older rows may still have `imported`) | Internal | stays **pending** — import does not opt anyone in |
+| **Voucher** | QR form `/daftar` | `qr_lead` | Voucher | **opted in** via `web_form` |
+
+Filter the list with **All sources / Internal / Voucher**. Extra labels from the Excel `tags` column (e.g. `vip`) show next to the source chip. Matching is by phone (`wa_id`); existing rows are updated and also stamped Internal. Someone who was imported and later submitted `/daftar` shows both chips.
+
+## Cloudflare Turnstile
+
+Protects the public QR form (`/daftar` + `/daftar/edit`), staff **login**, and **signup**. The widget sits above Submit; the API / server action verifies the token with Cloudflare before continuing.
+
+| Environment | Site key | Secret |
+| --- | --- | --- |
+| **Production** (Vercel) | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | `TURNSTILE_SECRET_KEY` |
+| **Localhost** (`npm run dev`, or `next start` off Vercel) | Cloudflare dummy `1x00000000000000000000AA` (always passes) | matching dummy secret |
+
+Dummy keys are [Cloudflare’s documented test pair](https://developers.cloudflare.com/turnstile/troubleshooting/testing/). Override with `TURNSTILE_USE_TEST_KEYS=true|false` if you need to force one mode. Hostname list in the Turnstile dashboard must include production (e.g. `join.aerisbeaute.com`); localhost does not need to be allowlisted because dummy keys are used instead.
+
 ## Modules
 
-- **CRM** — customers keyed off `wa_id`, consent ledger, saved addresses (reused per order), segments, profiles.
+- **CRM** — customers keyed off `wa_id`, consent ledger, saved addresses (reused per order), segments, profiles. Import vs voucher source tags as above.
 - **Inbox** — live WhatsApp conversations, least-loaded CS routing, assignment/claim, 24h-window indicator, reply composer (mobile list↔thread).
 - **Catalog & Pricing** — SKUs, prices, discounts, push to WhatsApp catalog.
 - **Orders (OMS)** — WA-cart & agent orders, lifecycle, payment links, issue flags, warehouse notices.

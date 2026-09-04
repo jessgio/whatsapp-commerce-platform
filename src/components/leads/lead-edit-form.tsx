@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, Select } from "@/components/ui";
 import { DatePicker } from "@/components/date-picker";
 import { CityCombobox } from "@/components/leads/city-combobox";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 import {
   COUNTRY_DIAL_CODES,
   DEFAULT_COUNTRY_DIAL,
@@ -40,10 +41,16 @@ export function LeadEditForm({
   const [city, setCity] = useState(initial.city);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileKey, setTurnstileKey] = useState(0);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!turnstileToken) {
+      setError("Selesaikan verifikasi keamanan dulu.");
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch("/api/public/leads/profile", {
@@ -57,6 +64,7 @@ export function LeadEditForm({
           phone,
           email,
           city: city || undefined,
+          turnstileToken,
         }),
       });
       const json = (await res.json().catch(() => null)) as
@@ -65,6 +73,8 @@ export function LeadEditForm({
 
       if (!res.ok || !json?.ok) {
         setError(json?.error ?? "Gagal menyimpan perubahan. Coba lagi.");
+        setTurnstileToken(null);
+        setTurnstileKey((n) => n + 1);
         return;
       }
 
@@ -161,7 +171,9 @@ export function LeadEditForm({
         </p>
       )}
 
-      <Button type="submit" disabled={submitting} className="w-full py-2.5">
+      <TurnstileWidget key={turnstileKey} onToken={setTurnstileToken} />
+
+      <Button type="submit" disabled={submitting || !turnstileToken} className="w-full py-2.5">
         {submitting ? "Menyimpan…" : "Simpan perubahan"}
       </Button>
     </form>

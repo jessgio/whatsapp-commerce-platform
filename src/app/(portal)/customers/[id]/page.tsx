@@ -6,7 +6,9 @@ import { can } from "@/lib/rbac";
 import { getCustomer, getCustomerAddresses, listOrdersForCustomer } from "@/lib/data/repo";
 import { Avatar, Badge, Button, Card, CardBody, CardHeader, CardTitle, Table, Th, Td } from "@/components/ui";
 import { CustomerRowActions } from "@/components/customers/customer-row-actions";
+import { CustomerTags } from "@/components/customers/source-chips";
 import { ConsentBadge, OrderBadge, PaymentBadge } from "@/components/status";
+import { consentChannelLabel } from "@/lib/customers/source";
 import { formatIDR, formatIDRCompact, formatDate } from "@/lib/format";
 
 export default async function CustomerDetailPage({
@@ -46,6 +48,9 @@ export default async function CustomerDetailPage({
                 <span>· Lahir {formatDate(customer.birthDate)}</span>
               )}
             </div>
+            <div className="mt-2">
+              <CustomerTags customer={customer} />
+            </div>
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -60,7 +65,7 @@ export default async function CustomerDetailPage({
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <MetricBox icon={<Star size={15} />} label="Lifetime value" value={formatIDRCompact(customer.lifetimeValue)} />
         <MetricBox icon={<MessageSquare size={15} />} label="Orders" value={String(customer.orderCount)} />
-        <MetricBox icon={<ShieldCheck size={15} />} label="Consent via" value={customer.consentChannel.replace("_", " ")} />
+        <MetricBox icon={<ShieldCheck size={15} />} label="Consent via" value={consentChannelLabel(customer.consentChannel)} />
         <MetricBox icon={<MapPin size={15} />} label="City" value={customer.city ?? "—"} />
       </div>
 
