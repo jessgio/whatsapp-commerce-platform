@@ -14,7 +14,7 @@ export function LoginForms() {
 
   return (
     <>
-      <form action={signInWithPassword} className="mt-7 space-y-4">
+      <form action={signInWithPassword} className="mt-4 space-y-3">
         <div>
           <label
             htmlFor="email"
@@ -60,7 +60,7 @@ export function LoginForms() {
         </button>
       </form>
 
-      <div className="my-6 flex items-center gap-3">
+      <div className="my-4 flex items-center gap-3">
         <span className="h-px flex-1 bg-border" />
         <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted">
           Or continue with
@@ -79,12 +79,12 @@ export function LoginForms() {
           Sign in with Google
         </button>
       </form>
-      <p className="mt-3 text-center text-xs text-muted">
+      <p className="mt-2.5 text-center text-xs text-muted">
         Use your{" "}
         <span className="font-medium text-foreground">@{STAFF_EMAIL_DOMAIN}</span>{" "}
         Google account.
       </p>
-      <p className="mt-4 text-center text-sm text-muted">
+      <p className="mt-2.5 text-center text-sm text-muted">
         New team member?{" "}
         <Link href="/signup" className="font-medium text-merlot hover:underline">
           Create account

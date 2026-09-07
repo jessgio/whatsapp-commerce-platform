@@ -109,7 +109,7 @@ export function TurnstileWidget({
   }, [theme]);
 
   return (
-    <div className="w-full space-y-1.5">
+    <div className="w-full space-y-1">
       <p className="text-xs font-medium text-muted">Verifikasi keamanan</p>
       {status === "loading" ? (
         <p className="text-xs text-muted">Memuat widget…</p>

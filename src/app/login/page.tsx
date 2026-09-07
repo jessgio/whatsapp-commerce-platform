@@ -31,15 +31,15 @@ export default async function LoginPage({
         </>
       }
     >
-      <h2 className="text-[26px] font-semibold tracking-tight text-foreground">
+      <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
         Welcome back
       </h2>
-      <p className="mt-1.5 text-sm text-muted">
+      <p className="mt-1 text-sm text-muted">
         Sign in to continue to WhatsApp Commerce
       </p>
 
       {error && (
-        <p className="mt-5 rounded-xl bg-danger/10 px-3 py-2 text-sm text-danger">
+        <p className="mt-3 rounded-xl bg-danger/10 px-3 py-2 text-sm text-danger">
           {error}
         </p>
       )}

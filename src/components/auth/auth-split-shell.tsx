@@ -63,29 +63,29 @@ export function AuthSplitShell({
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-dvh flex-col lg:grid lg:grid-cols-2">
-      <aside className="relative flex-1 overflow-hidden bg-[#121110] px-6 pb-14 pt-[max(1.75rem,env(safe-area-inset-top))] text-white lg:flex lg:min-h-dvh lg:flex-none lg:flex-col lg:px-12 lg:py-10 xl:px-16">
+    <div className="flex h-dvh flex-col overflow-hidden overscroll-none lg:grid lg:grid-cols-2">
+      <aside className="relative shrink-0 overflow-hidden bg-[#121110] px-6 py-5 text-white lg:flex lg:h-full lg:flex-col lg:px-12 lg:py-8 xl:px-16">
         <BrandGlow />
-        <div className="relative flex flex-col gap-8 lg:h-full lg:min-h-dvh lg:justify-between lg:gap-0">
+        <div className="relative flex flex-col gap-5 lg:h-full lg:justify-between lg:gap-0">
           <AuthBrandLockup />
 
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.3em] text-white/40">
               {greetingLabel()}
             </p>
-            <h1 className="mt-3 max-w-lg text-[28px] font-semibold leading-[1.15] tracking-tight lg:mt-4 lg:text-[42px] lg:leading-[1.12]">
+            <h1 className="mt-2 max-w-lg text-[26px] font-semibold leading-[1.15] tracking-tight lg:mt-4 lg:text-[42px] lg:leading-[1.12]">
               {headline}
             </h1>
             <p className="mt-5 hidden max-w-md text-[15px] leading-relaxed text-white/65 lg:block">
               {description}
             </p>
-            <div className="mt-7 flex gap-2.5 lg:mt-10 lg:flex-wrap">
+            <div className="mt-5 flex gap-2.5 lg:mt-10 lg:flex-wrap">
               {FEATURES.map(({ label, Icon }) => (
                 <span
                   key={label}
                   className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.06] backdrop-blur-sm lg:gap-2 lg:px-3.5 lg:py-2"
                 >
-                  <span className="flex h-11 w-11 items-center justify-center lg:h-auto lg:w-auto">
+                  <span className="flex h-9 w-9 items-center justify-center lg:h-auto lg:w-auto">
                     <Icon className="h-4 w-4 opacity-80 lg:h-3.5 lg:w-3.5" strokeWidth={1.75} />
                   </span>
                   <span className="hidden text-[13px] text-white/90 lg:inline">{label}</span>
@@ -98,12 +98,12 @@ export function AuthSplitShell({
         </div>
       </aside>
 
-      <section className="relative z-10 -mt-8 flex flex-col rounded-t-[28px] bg-[#F9F6F1] px-5 pb-5 pt-3 lg:mt-0 lg:min-h-dvh lg:flex-1 lg:items-center lg:justify-center lg:rounded-none lg:px-4 lg:py-10">
+      <section className="relative z-10 -mt-6 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain rounded-t-[28px] bg-[#F9F6F1] px-5 py-3 lg:mt-0 lg:h-full lg:items-center lg:justify-center lg:overflow-hidden lg:rounded-none lg:px-4 lg:py-6">
         <div
           aria-hidden
-          className="mx-auto mb-5 h-1 w-10 rounded-full bg-black/12 lg:hidden"
+          className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-black/12 lg:hidden"
         />
-        <div className="mx-auto w-full max-w-[420px] lg:rounded-[22px] lg:bg-white lg:px-8 lg:py-9 lg:shadow-[0_18px_50px_rgba(45,43,42,0.08)]">
+        <div className="mx-auto w-full max-w-[420px] lg:rounded-[22px] lg:bg-white lg:px-7 lg:py-6 lg:shadow-[0_18px_50px_rgba(45,43,42,0.08)]">
           {children}
         </div>
       </section>
