@@ -10,7 +10,6 @@ import {
   DEFAULT_COUNTRY_DIAL,
 } from "@/lib/country-codes";
 import type { FormField, FormPageCopy } from "@/lib/form-templates";
-import { TurnstileWidget } from "@/components/turnstile-widget";
 
 const fieldClass =
   "mt-1.5 w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-merlot focus:ring-2 focus:ring-merlot/20";
@@ -285,8 +284,6 @@ export function LeadForm({
   const [acceptTerms, setAcceptTerms] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
-  const [turnstileToken, setTurnstileToken] = React.useState<string | null>(null);
-  const [turnstileKey, setTurnstileKey] = React.useState(0);
 
   const setValue = React.useCallback((key: string, value: string | boolean) => {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -309,10 +306,6 @@ export function LeadForm({
       setError(`${missingDate.label} wajib diisi.`);
       return;
     }
-    if (!turnstileToken) {
-      setError("Selesaikan verifikasi keamanan dulu.");
-      return;
-    }
 
     setSubmitting(true);
     try {
@@ -328,7 +321,6 @@ export function LeadForm({
           acceptTerms,
           countryCode,
           values: payloadValues,
-          turnstileToken,
           // Back-compat flat fields for older clients
           name: values.name,
           birthDate: values.birthDate,
@@ -343,8 +335,6 @@ export function LeadForm({
 
       if (!res.ok || !json?.ok) {
         setError(json?.error ?? "Gagal mengirim formulir. Coba lagi.");
-        setTurnstileToken(null);
-        setTurnstileKey((n) => n + 1);
         return;
       }
 
@@ -388,13 +378,9 @@ export function LeadForm({
         </p>
       )}
 
-      {!preview ? (
-        <TurnstileWidget key={turnstileKey} onToken={setTurnstileToken} />
-      ) : null}
-
       <Button
         type="submit"
-        disabled={submitting || (!preview && !turnstileToken)}
+        disabled={submitting}
         className="w-full py-2.5"
       >
         {submitting ? "Mengirim…" : submitLabel}

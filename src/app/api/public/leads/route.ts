@@ -8,7 +8,6 @@ import { resolveStickyLeadDiscountCode } from "@/lib/lead-offer";
 import { parseLeadSubmission } from "@/lib/lead-form-submit";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
-import { verifyTurnstileToken } from "@/lib/turnstile-verify";
 import type { Customer } from "@/lib/types";
 
 const TERMS_VERSION = "qr_v1";
@@ -24,7 +23,6 @@ type LeadBody = {
   city?: string;
   acceptTerms?: boolean;
   values?: Record<string, unknown>;
-  turnstileToken?: string;
 };
 
 type ExistingLeadRow = {
@@ -130,14 +128,6 @@ export async function POST(req: NextRequest) {
   if (!body) {
     return NextResponse.json(
       { ok: false, error: "Permintaan tidak valid." },
-      { status: 400 },
-    );
-  }
-
-  const challenge = await verifyTurnstileToken(req, body.turnstileToken);
-  if (!challenge.ok) {
-    return NextResponse.json(
-      { ok: false, error: challenge.error },
       { status: 400 },
     );
   }

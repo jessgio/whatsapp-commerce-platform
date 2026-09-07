@@ -45,7 +45,7 @@ Copy `.env.example` → `.env.local` and fill in credentials to go live.
    - Payments: `/api/webhooks/payment`
    - Shipping: `/api/webhooks/shipping` — see [Biteship webhook](#biteship-webhook) below
 7. Deploy to Vercel. After changing env vars, **Redeploy** production — new keys are not picked up by a running deployment.
-8. Set Cloudflare Turnstile keys on Vercel (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`). Add `join.aerisbeaute.com` (and the production host) on the widget’s hostname list.
+8. Set Cloudflare Turnstile keys on Vercel (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`). Add the staff host (e.g. `whatsapp.aerisbeaute.com`) on the widget’s hostname list — used on login/signup only.
 
 ## Biteship webhook
 
@@ -115,7 +115,7 @@ Filter the list with **All sources / Internal / Voucher**. Extra labels from the
 
 ## Cloudflare Turnstile
 
-Protects the public QR form (`/daftar` + `/daftar/edit`), staff **login**, and **signup**. The widget sits above Submit; the API / server action verifies the token with Cloudflare before continuing.
+Protects staff **login** and **signup** only (not the public `/daftar` form). The widget sits above Submit; the server action verifies the token with Cloudflare before continuing.
 
 | Environment | Site key | Secret |
 | --- | --- | --- |
