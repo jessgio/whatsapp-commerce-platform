@@ -24,6 +24,24 @@ export function jakartaDateFromIso(iso: string | null | undefined): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(d);
 }
 
+/** YYYY-MM-DD today in Asia/Jakarta. */
+export function jakartaToday(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(
+    new Date(),
+  );
+}
+
+/** Add calendar days to a YYYY-MM-DD civil date. */
+export function jakartaPlusDays(days: number, from = jakartaToday()): string {
+  const [y, m, d] = from.split("-").map(Number);
+  if (!y || !m || !d) return from;
+  const dt = new Date(Date.UTC(y, m - 1, d + days));
+  const yyyy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getUTCDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 /** End of the given YYYY-MM-DD in Asia/Jakarta. */
 export function jakartaEndOfDayIso(isoDate: string): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return null;

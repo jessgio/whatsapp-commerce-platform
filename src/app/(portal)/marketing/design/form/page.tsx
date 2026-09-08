@@ -7,20 +7,13 @@ import { QR_LEAD_FUNNEL } from "@/lib/qr-lead-funnel";
 import { digitalFormPath, jakartaDateFromIso } from "@/lib/digital-form";
 import { Button, PageHeader } from "@/components/ui";
 import { ArrowLeft } from "lucide-react";
-import { createFormTemplateAction } from "@/app/(portal)/marketing/design/form/actions";
 import { DeleteFormTemplateButton } from "@/components/marketing/delete-form-template-button";
-import { redirect } from "next/navigation";
+import { NewFormTemplateMenu } from "@/components/marketing/new-form-template-menu";
 
 export default async function FormTemplatesListPage() {
   const user = await requirePermission("marketing.view");
   const canEdit = can(user.role, "marketing.edit");
   const templates = await listFormTemplates();
-
-  async function createAction() {
-    "use server";
-    const res = await createFormTemplateAction();
-    if (res.ok && res.id) redirect(`/marketing/design/form/${res.id}`);
-  }
 
   return (
     <div className="space-y-4">
@@ -36,11 +29,7 @@ export default async function FormTemplatesListPage() {
             subtitle="QR lead form, Form Digital share links with expiry and QR, and thank-you pages"
           />
         </div>
-        {canEdit ? (
-          <form action={createAction}>
-            <Button type="submit">New form template</Button>
-          </form>
-        ) : null}
+        {canEdit ? <NewFormTemplateMenu /> : null}
       </div>
 
       <div className="overflow-hidden rounded-[14px] border border-border bg-surface">
@@ -86,7 +75,11 @@ export default async function FormTemplatesListPage() {
                   )}
                 </td>
                 <td className="px-4 py-3 text-muted">
-                  {t.kind === "system" ? "System" : "Form Digital"}
+                  {t.kind === "system"
+                    ? "System"
+                    : t.expiresAt
+                      ? "Exp"
+                      : "Basic"}
                 </td>
                 <td className="px-4 py-3 text-muted">{t.fields.length}</td>
                 <td className="px-4 py-3 text-muted">

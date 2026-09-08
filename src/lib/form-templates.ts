@@ -346,6 +346,7 @@ export function cloneFormTemplate(t: FormTemplate): FormTemplate {
 export function emptyLibraryFormTemplate(input?: {
   id?: string;
   name?: string;
+  expiresAt?: string | null;
 }): FormTemplate {
   const id = input?.id ?? `form_${newBlockId()}`;
   return {
@@ -365,7 +366,7 @@ export function emptyLibraryFormTemplate(input?: {
     },
     discountCode: LEAD_DISCOUNT_CODE,
     publicSlug: `fd${Math.random().toString(36).slice(2, 10)}`,
-    expiresAt: null,
+    expiresAt: input?.expiresAt ?? null,
   };
 }
 
