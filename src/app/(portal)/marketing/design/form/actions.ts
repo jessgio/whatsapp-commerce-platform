@@ -24,12 +24,16 @@ export type SaveFormTemplateState = {
   id?: string;
 };
 
-function revalidateFormPaths(id?: string) {
+function revalidateFormPaths(id?: string, slug?: string | null) {
   revalidatePath("/marketing/design");
   revalidatePath("/marketing/design/form");
   if (id) revalidatePath(`/marketing/design/form/${id}`);
   revalidatePath("/daftar");
   revalidatePath("/daftar/terima-kasih");
+  if (slug) {
+    revalidatePath(`/f/${slug}`);
+    revalidatePath(`/f/${slug}/terima-kasih`);
+  }
 }
 
 export async function saveFormTemplateAction(input: {
@@ -40,6 +44,7 @@ export async function saveFormTemplateAction(input: {
   thankYou: FormThankYou;
   discountCode: string;
   isPublished?: boolean;
+  expiresAt?: string | null;
 }): Promise<SaveFormTemplateState> {
   await requirePermission("marketing.edit");
 
@@ -70,7 +75,7 @@ export async function saveFormTemplateAction(input: {
       existing ??
       emptyLibraryFormTemplate({ id: input.id, name });
 
-    await saveFormTemplate({
+    const saved = await saveFormTemplate({
       ...base,
       name,
       isPublished:
@@ -91,8 +96,12 @@ export async function saveFormTemplateAction(input: {
         blocks: input.thankYou.blocks as EmailBlock[],
       },
       discountCode,
+      expiresAt:
+        input.id === QR_LEAD_FORM_TEMPLATE_ID
+          ? null
+          : (input.expiresAt !== undefined ? input.expiresAt : base.expiresAt),
     });
-    revalidateFormPaths(input.id);
+    revalidateFormPaths(input.id, saved.publicSlug);
     return { ok: true, id: input.id };
   } catch (e) {
     return {
@@ -110,6 +119,7 @@ export async function saveFormFieldsAction(input: {
   fields: FormField[];
   discountCode: string;
   isPublished?: boolean;
+  expiresAt?: string | null;
 }): Promise<SaveFormTemplateState> {
   await requirePermission("marketing.edit");
   const existing = await getFormTemplate(input.id);
@@ -123,6 +133,7 @@ export async function saveFormFieldsAction(input: {
     thankYou: existing.thankYou,
     discountCode: input.discountCode,
     isPublished: input.isPublished ?? existing.isPublished,
+    expiresAt: input.expiresAt !== undefined ? input.expiresAt : existing.expiresAt,
   });
 }
 
@@ -160,10 +171,10 @@ export async function createFormTemplateAction(input?: {
   await requirePermission("marketing.edit");
   try {
     const template = emptyLibraryFormTemplate({
-      name: input?.name?.trim() || "Untitled form",
+      name: input?.name?.trim() || "Form Digital",
     });
     await saveFormTemplate(template);
-    revalidateFormPaths(template.id);
+    revalidateFormPaths(template.id, template.publicSlug);
     return { ok: true, id: template.id };
   } catch (e) {
     return {
@@ -178,8 +189,9 @@ export async function deleteFormTemplateAction(
 ): Promise<SaveFormTemplateState> {
   await requirePermission("marketing.edit");
   try {
+    const existing = await getFormTemplate(id);
     await deleteFormTemplate(id);
-    revalidateFormPaths();
+    revalidateFormPaths(id, existing?.publicSlug);
     return { ok: true };
   } catch (e) {
     return {

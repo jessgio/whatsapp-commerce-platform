@@ -6,12 +6,15 @@ export const TAG_INTERNAL = "internal";
 export const TAG_IMPORTED_LEGACY = "imported";
 /** Stamped when someone submits the QR / voucher form (`/daftar`). */
 export const TAG_VOUCHER = "qr_lead";
+/** Stamped when someone submits a Form Digital share link (`/f/[slug]`). */
+export const TAG_FORM_DIGITAL = "form_digital";
 
-export type CustomerSource = "internal" | "voucher";
+export type CustomerSource = "internal" | "voucher" | "form_digital";
 
 export const SOURCE_LABEL: Record<CustomerSource, string> = {
   internal: "Internal",
   voucher: "Voucher",
+  form_digital: "Form Digital",
 };
 
 export function customerSources(
@@ -19,7 +22,13 @@ export function customerSources(
 ): CustomerSource[] {
   const tags = new Set((customer.tags ?? []).map((t) => t.toLowerCase()));
   const out: CustomerSource[] = [];
-  if (tags.has(TAG_VOUCHER) || customer.consentChannel === "web_form") {
+  if (tags.has(TAG_FORM_DIGITAL)) {
+    out.push("form_digital");
+  }
+  if (
+    tags.has(TAG_VOUCHER) ||
+    (customer.consentChannel === "web_form" && !tags.has(TAG_FORM_DIGITAL))
+  ) {
     out.push("voucher");
   }
   if (
@@ -41,7 +50,12 @@ export function matchesCustomerSource(
 }
 
 export function extraCustomerTags(tags: string[] | null | undefined): string[] {
-  const hidden = new Set([TAG_INTERNAL, TAG_IMPORTED_LEGACY, TAG_VOUCHER]);
+  const hidden = new Set([
+    TAG_INTERNAL,
+    TAG_IMPORTED_LEGACY,
+    TAG_VOUCHER,
+    TAG_FORM_DIGITAL,
+  ]);
   return (tags ?? []).filter((t) => !hidden.has(t.toLowerCase()));
 }
 

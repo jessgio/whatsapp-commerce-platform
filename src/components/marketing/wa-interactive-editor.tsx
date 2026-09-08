@@ -240,6 +240,7 @@ export function WaInteractiveEditor({
               </Button>
             </div>
             <DndContext
+              id="wa-interactive-buttons"
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragEnd={onDragEnd}

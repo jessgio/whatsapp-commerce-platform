@@ -84,8 +84,8 @@ export default async function MarketingDesignPage() {
             </span>
             <div>
               <p className="text-sm text-foreground">
-                All form templates, including drafts. The live QR signup flow
-                lives in the funnel above.
+                All form templates, including Form Digital share links. The live
+                QR signup flow lives in the funnel above.
               </p>
               <p className="mt-1 text-xs text-muted">
                 {forms.length} template{forms.length === 1 ? "" : "s"}

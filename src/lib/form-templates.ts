@@ -65,6 +65,10 @@ export type FormTemplate = {
   fields: FormField[];
   thankYou: FormThankYou;
   discountCode: string;
+  /** Public share id for Form Digital (`/f/[slug]`). Null on the system QR form. */
+  publicSlug: string | null;
+  /** When set, the public link stops accepting traffic after this instant. */
+  expiresAt: string | null;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -320,6 +324,8 @@ export const DEFAULT_QR_LEAD_TEMPLATE: FormTemplate = {
     blocks: defaultThankYouBlocks(),
   },
   discountCode: LEAD_DISCOUNT_CODE,
+  publicSlug: null,
+  expiresAt: null,
 };
 
 export function cloneFormTemplate(t: FormTemplate): FormTemplate {
@@ -344,9 +350,9 @@ export function emptyLibraryFormTemplate(input?: {
   const id = input?.id ?? `form_${newBlockId()}`;
   return {
     id,
-    name: input?.name?.trim() || "Untitled form",
+    name: input?.name?.trim() || "Form Digital",
     kind: "library",
-    isPublished: false,
+    isPublished: true,
     formPage: { ...DEFAULT_QR_LEAD_FORM_PAGE },
     fields: DEFAULT_QR_LEAD_FIELDS.map((f) => ({ ...f, id: newFormFieldId() })),
     thankYou: {
@@ -358,6 +364,8 @@ export function emptyLibraryFormTemplate(input?: {
       })),
     },
     discountCode: LEAD_DISCOUNT_CODE,
+    publicSlug: `fd${Math.random().toString(36).slice(2, 10)}`,
+    expiresAt: null,
   };
 }
 
@@ -400,6 +408,11 @@ export function mapFormTemplate(r: any): FormTemplate {
       typeof r.discount_code === "string" && r.discount_code.trim()
         ? r.discount_code.trim()
         : LEAD_DISCOUNT_CODE,
+    publicSlug:
+      typeof r.public_slug === "string" && r.public_slug.trim()
+        ? r.public_slug.trim()
+        : null,
+    expiresAt: r.expires_at ? String(r.expires_at) : null,
     createdAt: r.created_at ?? undefined,
     updatedAt: r.updated_at ?? undefined,
   };

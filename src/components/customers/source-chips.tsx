@@ -8,6 +8,7 @@ import type { Customer } from "@/lib/types";
 const SOURCE_CHIP: Record<string, string> = {
   internal: "bg-beige-200 text-brown",
   voucher: "bg-merlot/10 text-merlot",
+  form_digital: "bg-beige-200 text-merlot",
 };
 
 export function CustomerTags({

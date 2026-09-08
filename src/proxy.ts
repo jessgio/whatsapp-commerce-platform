@@ -21,6 +21,7 @@ const PUBLIC_PATHS = [
   "/api/public",
   "/api/staff",
   "/daftar",
+  "/f",
   "/checkout",
 ];
 
@@ -36,10 +37,11 @@ const ANONYMOUS_PATHS = [
   "/api/public",
   "/api/staff",
   "/daftar",
+  "/f",
   "/checkout",
 ];
 
-const FORM_ALLOWED_PREFIXES = ["/daftar", "/checkout", "/api/public"];
+const FORM_ALLOWED_PREFIXES = ["/daftar", "/f", "/checkout", "/api/public"];
 
 function isFormHost(host: string): boolean {
   const hostname = host.split(":")[0]?.toLowerCase() ?? "";
@@ -59,7 +61,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const host = request.headers.get("host") ?? "";
 
-  // Customer-facing form domain: only /daftar (+ thank-you) and the leads API.
+  // Customer-facing form domain: /daftar, Form Digital /f/[slug], checkout, leads API.
   if (isFormHost(host)) {
     if (pathname === "/" || pathname === "") {
       return NextResponse.redirect(new URL("/daftar", request.url));

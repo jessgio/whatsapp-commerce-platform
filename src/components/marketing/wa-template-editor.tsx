@@ -384,6 +384,7 @@ export function WaTemplateEditor({
           </div>
 
           <DndContext
+            id="wa-template-buttons"
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={onDragEnd}

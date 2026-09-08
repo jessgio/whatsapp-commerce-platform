@@ -68,7 +68,7 @@ export function DatePicker({
   const rootRef = useRef<HTMLDivElement>(null);
   const yearListRef = useRef<HTMLDivElement>(null);
 
-  const maxYear = (maxDate ?? new Date()).getFullYear();
+  const maxYear = maxDate?.getFullYear() ?? new Date().getFullYear() + 10;
   const yearOptions = Array.from({ length: maxYear - 1920 + 1 }, (_, i) => maxYear - i);
 
   const monthStart = startOfMonth(view);

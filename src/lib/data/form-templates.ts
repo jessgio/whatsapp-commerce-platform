@@ -7,6 +7,7 @@ import {
   mapFormTemplate,
   type FormTemplate,
 } from "@/lib/form-templates";
+import { isDigitalForm, newPublicFormSlug } from "@/lib/digital-form";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
 let demoTemplates: FormTemplate[] = [cloneFormTemplate(DEFAULT_QR_LEAD_TEMPLATE)];
@@ -16,11 +17,25 @@ function ensureQrLead(list: FormTemplate[]): FormTemplate[] {
   return [cloneFormTemplate(DEFAULT_QR_LEAD_TEMPLATE), ...list];
 }
 
+/** Existing Form Digital rows created before share ids get a slug on first load. */
+async function ensureLibraryShare(t: FormTemplate): Promise<FormTemplate> {
+  if (!isDigitalForm(t) || t.publicSlug) return t;
+  try {
+    return await saveFormTemplate({ ...t, publicSlug: newPublicFormSlug() });
+  } catch (e) {
+    console.error("[form_templates] slug backfill failed", e);
+    return t;
+  }
+}
+
 export async function listFormTemplates(): Promise<FormTemplate[]> {
   if (!isSupabaseConfigured()) {
-    return demoTemplates
-      .slice()
-      .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+    return Promise.all(
+      demoTemplates
+        .slice()
+        .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""))
+        .map(ensureLibraryShare),
+    );
   }
 
   try {
@@ -36,7 +51,9 @@ export async function listFormTemplates(): Promise<FormTemplate[]> {
       });
       return [cloneFormTemplate(DEFAULT_QR_LEAD_TEMPLATE)];
     }
-    return ensureQrLead((data ?? []).map(mapFormTemplate));
+    return Promise.all(
+      ensureQrLead((data ?? []).map(mapFormTemplate)).map(ensureLibraryShare),
+    );
   } catch (e) {
     console.error("[form_templates] list exception", e);
     return [cloneFormTemplate(DEFAULT_QR_LEAD_TEMPLATE)];
@@ -48,7 +65,7 @@ export async function getFormTemplate(
 ): Promise<FormTemplate | null> {
   if (!isSupabaseConfigured()) {
     const found = demoTemplates.find((t) => t.id === id);
-    if (found) return cloneFormTemplate(found);
+    if (found) return ensureLibraryShare(cloneFormTemplate(found));
     if (id === QR_LEAD_FORM_TEMPLATE_ID) {
       return cloneFormTemplate(DEFAULT_QR_LEAD_TEMPLATE);
     }
@@ -78,7 +95,7 @@ export async function getFormTemplate(
       }
       return null;
     }
-    return mapFormTemplate(data);
+    return ensureLibraryShare(mapFormTemplate(data));
   } catch (e) {
     console.error("[form_templates] get exception", e);
     if (id === QR_LEAD_FORM_TEMPLATE_ID) {
@@ -94,16 +111,46 @@ export async function getActiveFormTemplate(): Promise<FormTemplate> {
   return t ?? cloneFormTemplate(DEFAULT_QR_LEAD_TEMPLATE);
 }
 
+export async function getFormTemplateBySlug(
+  slug: string,
+): Promise<FormTemplate | null> {
+  const trimmed = slug.trim();
+  if (!trimmed) return null;
+
+  if (!isSupabaseConfigured()) {
+    const found = demoTemplates.find((t) => t.publicSlug === trimmed);
+    return found ? cloneFormTemplate(found) : null;
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("form_templates")
+    .select("*")
+    .eq("public_slug", trimmed)
+    .maybeSingle();
+  if (error) {
+    console.error("[form_templates] get by slug failed", error);
+    return null;
+  }
+  return data ? mapFormTemplate(data) : null;
+}
+
 export async function saveFormTemplate(
   input: FormTemplate,
 ): Promise<FormTemplate> {
   const now = new Date().toISOString();
   const kind =
     input.id === QR_LEAD_FORM_TEMPLATE_ID ? "system" : (input.kind ?? "library");
+  const publicSlug =
+    kind === "system"
+      ? null
+      : input.publicSlug?.trim() || newPublicFormSlug();
   const next: FormTemplate = {
     ...input,
     kind,
-    name: input.name.trim() || "Untitled form",
+    name: input.name.trim() || "Form Digital",
+    publicSlug,
+    expiresAt: kind === "system" ? null : (input.expiresAt ?? null),
     updatedAt: now,
     createdAt: input.createdAt ?? now,
   };
@@ -128,6 +175,8 @@ export async function saveFormTemplate(
         fields: next.fields,
         thank_you: next.thankYou,
         discount_code: next.discountCode,
+        public_slug: next.publicSlug,
+        expires_at: next.expiresAt,
         created_at: next.createdAt,
         updated_at: now,
       },

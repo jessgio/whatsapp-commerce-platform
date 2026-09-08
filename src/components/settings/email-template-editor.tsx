@@ -458,6 +458,7 @@ export function EmailTemplateEditor({
           Blocks
         </p>
         <EditorRail
+          dndId={`email-blocks-${initial.id}`}
           items={railItems}
           selectedId={selectedId}
           disabled={readOnly}

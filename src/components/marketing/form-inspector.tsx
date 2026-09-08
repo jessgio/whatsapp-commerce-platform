@@ -19,6 +19,9 @@ import {
   type FormPageCopy,
 } from "@/lib/form-templates";
 import { QR_LEAD_FUNNEL } from "@/lib/qr-lead-funnel";
+import { DatePicker } from "@/components/date-picker";
+import { FormShareQr } from "@/components/marketing/form-share-qr";
+import { digitalFormUrl } from "@/lib/digital-form";
 import { cn } from "@/lib/utils";
 
 export type FormDoc = {
@@ -26,6 +29,9 @@ export type FormDoc = {
   discountCode: string;
   formPage: FormPageCopy;
   fields: FormField[];
+  isPublished: boolean;
+  publicSlug: string | null;
+  expiresOn: string;
 };
 
 export function isFieldLocked(field: FormField): boolean {
@@ -155,6 +161,8 @@ export function FormInspector({
   field,
   doc,
   readOnly,
+  isDigital,
+  publicBaseUrl,
   onChangeDoc,
   onChangeCopy,
   onChangeField,
@@ -163,11 +171,17 @@ export function FormInspector({
   field: FormField | null;
   doc: FormDoc;
   readOnly: boolean;
+  isDigital: boolean;
+  publicBaseUrl: string;
   onChangeDoc: (patch: Partial<Omit<FormDoc, "formPage" | "fields">>) => void;
   onChangeCopy: (patch: Partial<FormPageCopy>) => void;
   onChangeField: (id: string, patch: Partial<FormField>) => void;
 }) {
   if (!field) {
+    const shareUrl =
+      isDigital && doc.publicSlug
+        ? digitalFormUrl(publicBaseUrl, doc.publicSlug)
+        : "";
     return (
       <>
         <InspectorSection title="Template">
@@ -192,6 +206,49 @@ export function FormInspector({
             />
           </InspectorField>
         </InspectorSection>
+
+        {isDigital ? (
+          <InspectorSection title="Public link">
+            <EditorToggle
+              label="Published"
+              checked={doc.isPublished}
+              disabled={readOnly}
+              onChange={(isPublished) => onChangeDoc({ isPublished })}
+            />
+            <InspectorField
+              label="Link expiry"
+              hint="Leave empty for no expiry. Expires at the end of that day (Jakarta)."
+            >
+              <DatePicker
+                value={doc.expiresOn}
+                onChange={(expiresOn) => onChangeDoc({ expiresOn })}
+                placeholder="No expiry"
+              />
+              {doc.expiresOn ? (
+                <button
+                  type="button"
+                  className="mt-1 text-[11px] font-medium text-merlot hover:underline"
+                  onClick={() => onChangeDoc({ expiresOn: "" })}
+                  disabled={readOnly}
+                >
+                  Clear expiry
+                </button>
+              ) : null}
+            </InspectorField>
+            {shareUrl ? (
+              <InspectorField label="QR code" hint="Logo uses aeris-mark-512.png in the center.">
+                <FormShareQr
+                  url={shareUrl}
+                  fileName={`aeris-form-${doc.publicSlug ?? "digital"}`}
+                />
+              </InspectorField>
+            ) : (
+              <p className="text-[11px] text-muted">
+                Save the form once to generate a unique public link and QR.
+              </p>
+            )}
+          </InspectorSection>
+        ) : null}
 
         <InspectorSection title="Page copy">
           <InspectorField label="Brand title">

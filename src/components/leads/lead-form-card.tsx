@@ -5,8 +5,8 @@ import type { FormField, FormPageCopy } from "@/lib/form-templates";
 import { cn } from "@/lib/utils";
 
 /**
- * The registration card as visitors see it. Shared by the public `/daftar`
- * page and the form builder canvas so the preview can never drift.
+ * The registration card as visitors see it. Shared by `/daftar`, `/f/[slug]`,
+ * and the form builder canvas so the preview can never drift.
  */
 export function LeadFormCard({
   formPage,
@@ -15,6 +15,7 @@ export function LeadFormCard({
   className,
   wrapHeader,
   wrapField,
+  formSlug,
 }: {
   formPage: FormPageCopy;
   fields: FormField[];
@@ -22,6 +23,7 @@ export function LeadFormCard({
   className?: string;
   wrapHeader?: (node: React.ReactNode) => React.ReactNode;
   wrapField?: (field: FormField, node: React.ReactNode) => React.ReactNode;
+  formSlug?: string;
 }) {
   const header = (
     <div>
@@ -57,6 +59,7 @@ export function LeadFormCard({
           submitLabel={formPage.submitLabel}
           preview={preview}
           wrapField={wrapField}
+          formSlug={formSlug}
         />
       </div>
     </div>

@@ -140,6 +140,7 @@ export function EditorRail({
   onReorder,
   onDuplicate,
   onRemove,
+  dndId = "editor-rail",
 }: {
   items: EditorRailItem[];
   selectedId: string | null;
@@ -148,6 +149,8 @@ export function EditorRail({
   onReorder: (from: number, to: number) => void;
   onDuplicate?: (id: string) => void;
   onRemove?: (id: string) => void;
+  /** Stable DndContext id so SSR/client aria-describedby attributes match. */
+  dndId?: string;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -172,6 +175,7 @@ export function EditorRail({
 
   return (
     <DndContext
+      id={dndId}
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragEnd={handleDragEnd}

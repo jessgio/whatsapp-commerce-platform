@@ -9,6 +9,8 @@ import { isQrLeadForm, QR_LEAD_FUNNEL } from "@/lib/qr-lead-funnel";
 import { EditorPageShell } from "@/components/editor/editor-page-shell";
 import { FormTemplateTabs } from "@/components/marketing/form-template-tabs";
 import { DeleteFormTemplateButton } from "@/components/marketing/delete-form-template-button";
+import { publicFormBaseUrl } from "@/lib/lead-edit";
+import { isDigitalForm, digitalFormPath, jakartaDateFromIso } from "@/lib/digital-form";
 
 export default async function FormTemplateEditPage({
   params,
@@ -22,6 +24,11 @@ export default async function FormTemplateEditPage({
   if (!template) notFound();
 
   const isFunnel = isQrLeadForm(template.id);
+  const digital = isDigitalForm(template);
+  const sharePath = digital && template.publicSlug
+    ? digitalFormPath(template.publicSlug)
+    : null;
+  const expiry = jakartaDateFromIso(template.expiresAt);
   const [welcomeEmail, fonts] = isFunnel
     ? await Promise.all([getLeadWelcomeTemplate(), listEmailFonts()])
     : [null, []];
@@ -33,7 +40,7 @@ export default async function FormTemplateEditPage({
       title={isFunnel ? QR_LEAD_FUNNEL.label : template.name}
       actions={
         canEdit && !isFunnel ? (
-          <DeleteFormTemplateButton id={template.id} />
+          <DeleteFormTemplateButton id={template.id} name={template.name} />
         ) : null
       }
       meta={
@@ -56,7 +63,19 @@ export default async function FormTemplateEditPage({
             ) : null}
           </>
         ) : (
-          "Library template — not served on /daftar until promoted"
+          <>
+            Form Digital
+            {sharePath ? (
+              <>
+                {" · "}
+                <Link href={sharePath} className="text-merlot hover:underline">
+                  {sharePath}
+                </Link>
+              </>
+            ) : null}
+            {expiry ? ` · expires ${expiry}` : " · no expiry"}
+            {template.isPublished ? "" : " · unpublished"}
+          </>
         )
       }
     >
@@ -65,6 +84,7 @@ export default async function FormTemplateEditPage({
         canEdit={canEdit}
         welcomeEmail={welcomeEmail}
         customFonts={fonts}
+        publicBaseUrl={publicFormBaseUrl()}
       />
     </EditorPageShell>
   );

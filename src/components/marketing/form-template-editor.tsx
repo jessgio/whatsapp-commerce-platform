@@ -46,6 +46,7 @@ import {
   type FormTemplate,
   type SystemFormFieldKey,
 } from "@/lib/form-templates";
+import { isDigitalForm, jakartaDateFromIso, jakartaEndOfDayIso } from "@/lib/digital-form";
 import { cn } from "@/lib/utils";
 
 type CustomFieldType = "text" | "textarea" | "select" | "checkbox";
@@ -83,21 +84,27 @@ export function FormTemplateEditor({
   canEdit = true,
   heightClass,
   active = true,
+  publicBaseUrl,
 }: {
   initial: FormTemplate;
   canEdit?: boolean;
   heightClass?: string;
   /** Set false when the editor is mounted but hidden, so shortcuts stay off. */
   active?: boolean;
+  publicBaseUrl: string;
 }) {
   const router = useRouter();
   const readOnly = !canEdit;
+  const digital = isDigitalForm(initial);
 
   const history = useEditorHistory<FormDoc>({
     name: initial.name,
     discountCode: initial.discountCode,
     formPage: initial.formPage,
     fields: initial.fields,
+    isPublished: initial.isPublished,
+    publicSlug: initial.publicSlug,
+    expiresOn: jakartaDateFromIso(initial.expiresAt),
   });
   const { doc, commit, markSaved } = history;
 
@@ -251,12 +258,19 @@ export function FormTemplateEditor({
         formPage: doc.formPage,
         fields: doc.fields,
         discountCode: doc.discountCode,
-        isPublished: initial.isPublished,
+        isPublished: digital ? doc.isPublished : initial.isPublished,
+        expiresAt: digital
+          ? doc.expiresOn
+            ? jakartaEndOfDayIso(doc.expiresOn)
+            : null
+          : null,
       });
       setMessage({
         ok: res.ok,
         text: res.ok
-          ? "Form saved. The public /daftar page uses this design."
+          ? digital
+            ? "Form Digital saved. Use the public link and QR in Form settings."
+            : "Form saved. The public /daftar page uses this design."
           : (res.error ?? "Save failed."),
       });
       if (res.ok) {
@@ -271,6 +285,7 @@ export function FormTemplateEditor({
     saving,
     initial.id,
     initial.isPublished,
+    digital,
     doc,
     markSaved,
     router,
@@ -330,6 +345,7 @@ export function FormTemplateEditor({
           Fields
         </p>
         <EditorRail
+          dndId={`form-fields-${initial.id}`}
           items={railItems}
           selectedId={selectedId}
           disabled={readOnly}
@@ -385,6 +401,8 @@ export function FormTemplateEditor({
           field={selectedField}
           doc={doc}
           readOnly={readOnly}
+          isDigital={digital}
+          publicBaseUrl={publicBaseUrl}
           onChangeDoc={changeDoc}
           onChangeCopy={changeCopy}
           onChangeField={changeField}

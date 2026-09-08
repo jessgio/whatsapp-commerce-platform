@@ -23,12 +23,14 @@ export function FormTemplateTabs({
   canEdit,
   welcomeEmail,
   customFonts = [],
+  publicBaseUrl,
 }: {
   template: FormTemplate;
   canEdit: boolean;
   /** Only for the system QR form — enables the Welcome email tab. */
   welcomeEmail?: EmailTemplate | null;
   customFonts?: EmailCustomFont[];
+  publicBaseUrl: string;
 }) {
   const router = useRouter();
   const isFunnel = isQrLeadForm(template.id) && Boolean(welcomeEmail);
@@ -114,6 +116,7 @@ export function FormTemplateTabs({
           canEdit={canEdit}
           active={tab === "form"}
           heightClass="h-full min-h-0"
+          publicBaseUrl={publicBaseUrl}
         />
       </div>
 

@@ -4,9 +4,11 @@ import { can } from "@/lib/rbac";
 import { listFormTemplates } from "@/lib/data/form-templates";
 import { QR_LEAD_FORM_TEMPLATE_ID } from "@/lib/form-templates";
 import { QR_LEAD_FUNNEL } from "@/lib/qr-lead-funnel";
+import { digitalFormPath, jakartaDateFromIso } from "@/lib/digital-form";
 import { Button, PageHeader } from "@/components/ui";
 import { ArrowLeft } from "lucide-react";
 import { createFormTemplateAction } from "@/app/(portal)/marketing/design/form/actions";
+import { DeleteFormTemplateButton } from "@/components/marketing/delete-form-template-button";
 import { redirect } from "next/navigation";
 
 export default async function FormTemplatesListPage() {
@@ -31,7 +33,7 @@ export default async function FormTemplatesListPage() {
           </Link>
           <PageHeader
             title="Form templates"
-            subtitle="QR lead form fields and the post-submit thank-you landing page"
+            subtitle="QR lead form, Form Digital share links with expiry and QR, and thank-you pages"
           />
         </div>
         {canEdit ? (
@@ -49,6 +51,9 @@ export default async function FormTemplatesListPage() {
               <th className="px-4 py-3 font-medium">Kind</th>
               <th className="px-4 py-3 font-medium">Fields</th>
               <th className="px-4 py-3 font-medium">Updated</th>
+              {canEdit ? (
+                <th className="px-4 py-3 text-right font-medium">Actions</th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -68,10 +73,20 @@ export default async function FormTemplatesListPage() {
                     <p className="text-xs text-muted">
                       {QR_LEAD_FUNNEL.label} — form, thank-you, and welcome email
                     </p>
-                  ) : null}
+                  ) : (
+                    <p className="text-xs text-muted">
+                      {t.publicSlug
+                        ? digitalFormPath(t.publicSlug)
+                        : "Save to generate a public link"}
+                      {t.expiresAt
+                        ? ` · expires ${jakartaDateFromIso(t.expiresAt)}`
+                        : " · no expiry"}
+                      {t.isPublished ? "" : " · unpublished"}
+                    </p>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-muted">
-                  {t.kind === "system" ? "System" : "Library"}
+                  {t.kind === "system" ? "System" : "Form Digital"}
                 </td>
                 <td className="px-4 py-3 text-muted">{t.fields.length}</td>
                 <td className="px-4 py-3 text-muted">
@@ -79,6 +94,15 @@ export default async function FormTemplatesListPage() {
                     ? new Date(t.updatedAt).toLocaleString()
                     : "—"}
                 </td>
+                {canEdit ? (
+                  <td className="px-4 py-3 text-right">
+                    {t.id === QR_LEAD_FORM_TEMPLATE_ID ? (
+                      <span className="text-xs text-muted">—</span>
+                    ) : (
+                      <DeleteFormTemplateButton id={t.id} name={t.name} compact />
+                    )}
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>

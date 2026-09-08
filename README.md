@@ -110,8 +110,11 @@ Staff list: **Customers**. Import Excel from **Import contacts**; template at `/
 | --- | --- | --- | --- | --- |
 | **Internal** | Excel import | `internal` (older rows may still have `imported`) | Internal | stays **pending** — import does not opt anyone in |
 | **Voucher** | QR form `/daftar` | `qr_lead` | Voucher | **opted in** via `web_form` |
+| **Form Digital** | Share link `/f/[slug]` | `form_digital` | Form Digital | **opted in** via `web_form` |
 
-Filter the list with **All sources / Internal / Voucher**. Extra labels from the Excel `tags` column (e.g. `vip`) show next to the source chip. Matching is by phone (`wa_id`); existing rows are updated and also stamped Internal. Someone who was imported and later submitted `/daftar` shows both chips.
+Filter the list with **All sources / Internal / Voucher / Form Digital**. Extra labels from the Excel `tags` column (e.g. `vip`) show next to the source chip. Matching is by phone (`wa_id`); existing rows are updated and also stamped Internal. Someone who was imported and later submitted `/daftar` shows both chips.
+
+**Form Digital** (Design → Form templates) is a fully custom copy of the QR lead form for social media. Each library template gets a unique public slug (`/f/fd…`), optional link expiry (end of that day, Asia/Jakarta), and a downloadable QR with `aeris-mark-512.png` in the center. Unpublished or expired links reject both GET and POST. The system QR funnel on `/daftar` is unchanged.
 
 ## Cloudflare Turnstile
 

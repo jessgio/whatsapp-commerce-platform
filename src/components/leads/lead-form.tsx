@@ -267,6 +267,7 @@ export function LeadForm({
   submitLabel = "Kirim",
   preview = false,
   wrapField,
+  formSlug,
 }: {
   fields: FormField[];
   formPage?: FormPageCopy;
@@ -275,6 +276,8 @@ export function LeadForm({
   preview?: boolean;
   /** Lets the builder wrap each field with a selection affordance. */
   wrapField?: (field: FormField, node: React.ReactNode) => React.ReactNode;
+  /** Form Digital public slug — posts against that template instead of /daftar. */
+  formSlug?: string;
 }) {
   const router = useRouter();
   const [values, setValues] = React.useState<Record<string, string | boolean>>(
@@ -321,6 +324,7 @@ export function LeadForm({
           acceptTerms,
           countryCode,
           values: payloadValues,
+          formSlug: formSlug || undefined,
           // Back-compat flat fields for older clients
           name: values.name,
           birthDate: values.birthDate,
@@ -339,10 +343,13 @@ export function LeadForm({
       }
 
       const code = json.discountCode?.trim();
+      const thanks = formSlug
+        ? `/f/${encodeURIComponent(formSlug)}/terima-kasih`
+        : "/daftar/terima-kasih";
       router.push(
         code
-          ? `/daftar/terima-kasih?code=${encodeURIComponent(code)}`
-          : "/daftar/terima-kasih",
+          ? `${thanks}?code=${encodeURIComponent(code)}`
+          : thanks,
       );
     } catch {
       setError("Gagal mengirim formulir. Periksa koneksi Anda.");

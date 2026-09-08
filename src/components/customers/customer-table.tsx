@@ -133,11 +133,12 @@ export function CustomerTable({
             setSource(next as "all" | CustomerSource);
             setPage(0);
           }}
-          className="w-40"
+          className="w-48"
           options={[
             { value: "all", label: "All sources" },
             { value: "internal", label: "Internal" },
             { value: "voucher", label: "Voucher" },
+            { value: "form_digital", label: "Form Digital" },
           ]}
         />
         <Select

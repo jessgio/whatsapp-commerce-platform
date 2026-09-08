@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { TAG_FORM_DIGITAL, TAG_VOUCHER } from "@/lib/customers/source";
 import { DEMO_CUSTOMERS } from "@/lib/demo/data";
-import { getActiveFormTemplate } from "@/lib/data/form-templates";
+import {
+  getActiveFormTemplate,
+  getFormTemplateBySlug,
+} from "@/lib/data/form-templates";
+import { isDigitalForm, isFormExpired, isPublicSlug } from "@/lib/digital-form";
 import { sendLeadWelcomeEmail } from "@/lib/email";
 import { isSupabaseConfigured } from "@/lib/env";
 import { newEditToken } from "@/lib/lead-edit";
@@ -8,6 +13,7 @@ import { resolveStickyLeadDiscountCode } from "@/lib/lead-offer";
 import { parseLeadSubmission } from "@/lib/lead-form-submit";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import type { FormTemplate } from "@/lib/form-templates";
 import type { Customer } from "@/lib/types";
 
 const TERMS_VERSION = "qr_v1";
@@ -23,7 +29,38 @@ type LeadBody = {
   city?: string;
   acceptTerms?: boolean;
   values?: Record<string, unknown>;
+  formSlug?: string;
 };
+
+function stampLeadTag(tags: string[], tag: string): string[] {
+  return tags.includes(tag) ? tags : [...tags, tag];
+}
+
+async function resolveSubmitTemplate(
+  formSlug?: string,
+): Promise<
+  | { template: FormTemplate; tag: string }
+  | { error: string; status: number }
+> {
+  const slug = formSlug?.trim();
+  if (!slug) {
+    return { template: await getActiveFormTemplate(), tag: TAG_VOUCHER };
+  }
+  if (!isPublicSlug(slug)) {
+    return { error: "Formulir tidak ditemukan.", status: 404 };
+  }
+  const template = await getFormTemplateBySlug(slug);
+  if (!template || !isDigitalForm(template)) {
+    return { error: "Formulir tidak ditemukan.", status: 404 };
+  }
+  if (!template.isPublished) {
+    return { error: "Formulir belum tersedia.", status: 403 };
+  }
+  if (isFormExpired(template.expiresAt)) {
+    return { error: "Tautan sudah berakhir.", status: 410 };
+  }
+  return { template, tag: TAG_FORM_DIGITAL };
+}
 
 type ExistingLeadRow = {
   id: string;
@@ -42,6 +79,7 @@ function upsertDemoLead(data: {
   phone: string;
   formAnswers: Record<string, string | boolean>;
   templateDiscountCode: string;
+  leadTag: string;
 }) {
   const now = new Date().toISOString();
   const emailLower = data.email.toLowerCase();
@@ -54,9 +92,7 @@ function upsertDemoLead(data: {
 
   if (existingIdx >= 0) {
     const prev = DEMO_CUSTOMERS[existingIdx];
-    const tags = prev.tags.includes("qr_lead")
-      ? prev.tags
-      : [...prev.tags, "qr_lead"];
+    const tags = stampLeadTag(prev.tags, data.leadTag);
     const editToken = prev.editToken || newEditToken();
     const discountCode = resolveStickyLeadDiscountCode({
       templateCode: data.templateDiscountCode,
@@ -98,7 +134,7 @@ function upsertDemoLead(data: {
     consentStatus: "opted_in",
     consentChannel: "web_form",
     segments: ["New"],
-    tags: ["qr_lead"],
+    tags: [data.leadTag],
     lifetimeValue: 0,
     orderCount: 0,
     firstSeenAt: now,
@@ -132,7 +168,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const template = await getActiveFormTemplate();
+  const resolved = await resolveSubmitTemplate(body.formSlug);
+  if ("error" in resolved) {
+    return NextResponse.json(
+      { ok: false, error: resolved.error },
+      { status: resolved.status },
+    );
+  }
+  const { template, tag: leadTag } = resolved;
   const templateDiscountCode = template.discountCode;
 
   const values: Record<string, unknown> = {
@@ -161,6 +204,7 @@ export async function POST(req: NextRequest) {
       ...lead,
       formAnswers,
       templateDiscountCode,
+      leadTag,
     });
     try {
       await sendLeadWelcomeEmail({
@@ -244,7 +288,7 @@ export async function POST(req: NextRequest) {
 
   if (existing) {
     const tags: string[] = Array.isArray(existing.tags) ? [...existing.tags] : [];
-    if (!tags.includes("qr_lead")) tags.push("qr_lead");
+    if (!tags.includes(leadTag)) tags.push(leadTag);
 
     const { data: waOwner } = await supabase
       .from("customers")
@@ -290,7 +334,7 @@ export async function POST(req: NextRequest) {
       .from("customers")
       .insert({
         ...payload,
-        tags: ["qr_lead"],
+        tags: [leadTag],
         segments: ["New"],
         first_seen_at: now,
       })
