@@ -217,11 +217,7 @@ export function FormInspector({
             />
             <InspectorField
               label="Link expiry"
-              hint={
-                doc.expiresOn
-                  ? "Expires at the end of that day (Jakarta)."
-                  : "Leave empty for a Basic form with no expiry. Set a date to make this an Exp form."
-              }
+              hint="Leave empty for no expiry. Expires at the end of that day (Jakarta)."
             >
               <DatePicker
                 value={doc.expiresOn}

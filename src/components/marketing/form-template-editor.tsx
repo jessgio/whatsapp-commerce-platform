@@ -36,6 +36,7 @@ import {
 } from "@/components/marketing/form-inspector";
 import {
   OPTIONAL_SYSTEM_KEYS,
+  QR_LEAD_FORM_TEMPLATE_ID,
   createCustomField,
   createSystemField,
   isSystemFieldKey,
@@ -270,7 +271,9 @@ export function FormTemplateEditor({
         text: res.ok
           ? digital
             ? "Form Digital saved. Use the public link and QR in Form settings."
-            : "Form saved. The public /daftar page uses this design."
+            : initial.id === QR_LEAD_FORM_TEMPLATE_ID
+              ? "Form saved. The public /daftar page uses this design."
+              : "Basic form saved."
           : (res.error ?? "Save failed."),
       });
       if (res.ok) {

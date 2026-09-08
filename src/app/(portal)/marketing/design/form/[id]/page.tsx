@@ -64,7 +64,7 @@ export default async function FormTemplateEditPage({
           </>
         ) : (
           <>
-            {expiry ? "Exp form" : "Basic form"}
+            {digital ? "Form Digital" : "Basic form"}
             {sharePath ? (
               <>
                 {" · "}
@@ -73,8 +73,12 @@ export default async function FormTemplateEditPage({
                 </Link>
               </>
             ) : null}
-            {expiry ? ` · expires ${expiry}` : " · no expiry"}
-            {template.isPublished ? "" : " · unpublished"}
+            {digital
+              ? expiry
+                ? ` · expires ${expiry}`
+                : " · no expiry"
+              : " · form and thank-you"}
+            {digital && !template.isPublished ? " · unpublished" : ""}
           </>
         )
       }

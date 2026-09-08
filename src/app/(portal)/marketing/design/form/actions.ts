@@ -17,7 +17,7 @@ import {
   type FormThankYou,
 } from "@/lib/form-templates";
 import { requirePermission } from "@/lib/guard";
-import { jakartaEndOfDayIso, jakartaPlusDays } from "@/lib/digital-form";
+import { jakartaEndOfDayIso, newPublicFormSlug } from "@/lib/digital-form";
 
 export type SaveFormTemplateState = {
   ok: boolean;
@@ -168,18 +168,16 @@ export async function saveFormThankYouAction(input: {
 
 export async function createFormTemplateAction(input?: {
   name?: string;
-  variant?: "basic" | "exp";
+  variant?: "basic" | "digital";
 }): Promise<SaveFormTemplateState> {
   await requirePermission("marketing.edit");
-  const variant = input?.variant === "exp" ? "exp" : "basic";
-  const expiresAt =
-    variant === "exp" ? jakartaEndOfDayIso(jakartaPlusDays(30)) : null;
+  const digital = input?.variant === "digital";
   try {
     const template = emptyLibraryFormTemplate({
       name:
-        input?.name?.trim() ||
-        (variant === "exp" ? "Exp form" : "Basic form"),
-      expiresAt,
+        input?.name?.trim() || (digital ? "Form Digital" : "Basic form"),
+      publicSlug: digital ? newPublicFormSlug() : null,
+      expiresAt: null,
     });
     await saveFormTemplate(template);
     revalidateFormPaths(template.id, template.publicSlug);

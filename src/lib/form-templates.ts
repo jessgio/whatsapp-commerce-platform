@@ -346,12 +346,13 @@ export function cloneFormTemplate(t: FormTemplate): FormTemplate {
 export function emptyLibraryFormTemplate(input?: {
   id?: string;
   name?: string;
+  publicSlug?: string | null;
   expiresAt?: string | null;
 }): FormTemplate {
   const id = input?.id ?? `form_${newBlockId()}`;
   return {
     id,
-    name: input?.name?.trim() || "Form Digital",
+    name: input?.name?.trim() || "Basic form",
     kind: "library",
     isPublished: true,
     formPage: { ...DEFAULT_QR_LEAD_FORM_PAGE },
@@ -365,7 +366,7 @@ export function emptyLibraryFormTemplate(input?: {
       })),
     },
     discountCode: LEAD_DISCOUNT_CODE,
-    publicSlug: `fd${Math.random().toString(36).slice(2, 10)}`,
+    publicSlug: input?.publicSlug?.trim() || null,
     expiresAt: input?.expiresAt ?? null,
   };
 }

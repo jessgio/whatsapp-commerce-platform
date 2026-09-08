@@ -5,8 +5,16 @@ export function newPublicFormSlug(): string {
   return `fd${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function isDigitalForm(template: { id: string; kind: string }): boolean {
-  return template.kind !== "system" && template.id !== QR_LEAD_FORM_TEMPLATE_ID;
+export function isDigitalForm(template: {
+  id: string;
+  kind: string;
+  publicSlug?: string | null;
+}): boolean {
+  return (
+    template.kind !== "system" &&
+    template.id !== QR_LEAD_FORM_TEMPLATE_ID &&
+    Boolean(template.publicSlug)
+  );
 }
 
 export function digitalFormPath(slug: string): string {

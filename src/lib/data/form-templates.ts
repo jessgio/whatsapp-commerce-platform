@@ -7,7 +7,6 @@ import {
   mapFormTemplate,
   type FormTemplate,
 } from "@/lib/form-templates";
-import { isDigitalForm, newPublicFormSlug } from "@/lib/digital-form";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
 let demoTemplates: FormTemplate[] = [cloneFormTemplate(DEFAULT_QR_LEAD_TEMPLATE)];
@@ -17,25 +16,11 @@ function ensureQrLead(list: FormTemplate[]): FormTemplate[] {
   return [cloneFormTemplate(DEFAULT_QR_LEAD_TEMPLATE), ...list];
 }
 
-/** Existing Form Digital rows created before share ids get a slug on first load. */
-async function ensureLibraryShare(t: FormTemplate): Promise<FormTemplate> {
-  if (!isDigitalForm(t) || t.publicSlug) return t;
-  try {
-    return await saveFormTemplate({ ...t, publicSlug: newPublicFormSlug() });
-  } catch (e) {
-    console.error("[form_templates] slug backfill failed", e);
-    return t;
-  }
-}
-
 export async function listFormTemplates(): Promise<FormTemplate[]> {
   if (!isSupabaseConfigured()) {
-    return Promise.all(
-      demoTemplates
-        .slice()
-        .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""))
-        .map(ensureLibraryShare),
-    );
+    return demoTemplates
+      .slice()
+      .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
   }
 
   try {
@@ -51,9 +36,7 @@ export async function listFormTemplates(): Promise<FormTemplate[]> {
       });
       return [cloneFormTemplate(DEFAULT_QR_LEAD_TEMPLATE)];
     }
-    return Promise.all(
-      ensureQrLead((data ?? []).map(mapFormTemplate)).map(ensureLibraryShare),
-    );
+    return ensureQrLead((data ?? []).map(mapFormTemplate));
   } catch (e) {
     console.error("[form_templates] list exception", e);
     return [cloneFormTemplate(DEFAULT_QR_LEAD_TEMPLATE)];
@@ -65,7 +48,7 @@ export async function getFormTemplate(
 ): Promise<FormTemplate | null> {
   if (!isSupabaseConfigured()) {
     const found = demoTemplates.find((t) => t.id === id);
-    if (found) return ensureLibraryShare(cloneFormTemplate(found));
+    if (found) return cloneFormTemplate(found);
     if (id === QR_LEAD_FORM_TEMPLATE_ID) {
       return cloneFormTemplate(DEFAULT_QR_LEAD_TEMPLATE);
     }
@@ -95,7 +78,7 @@ export async function getFormTemplate(
       }
       return null;
     }
-    return ensureLibraryShare(mapFormTemplate(data));
+    return mapFormTemplate(data);
   } catch (e) {
     console.error("[form_templates] get exception", e);
     if (id === QR_LEAD_FORM_TEMPLATE_ID) {
@@ -142,15 +125,14 @@ export async function saveFormTemplate(
   const kind =
     input.id === QR_LEAD_FORM_TEMPLATE_ID ? "system" : (input.kind ?? "library");
   const publicSlug =
-    kind === "system"
-      ? null
-      : input.publicSlug?.trim() || newPublicFormSlug();
+    kind === "system" ? null : input.publicSlug?.trim() || null;
   const next: FormTemplate = {
     ...input,
     kind,
-    name: input.name.trim() || "Form Digital",
+    name:
+      input.name.trim() || (publicSlug ? "Form Digital" : "Basic form"),
     publicSlug,
-    expiresAt: kind === "system" ? null : (input.expiresAt ?? null),
+    expiresAt: kind === "system" || !publicSlug ? null : (input.expiresAt ?? null),
     updatedAt: now,
     createdAt: input.createdAt ?? now,
   };

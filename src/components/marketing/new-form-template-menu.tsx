@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, ChevronDown, FileText } from "lucide-react";
+import { ChevronDown, FileText, QrCode } from "lucide-react";
 import { Button } from "@/components/ui";
 import { createFormTemplateAction } from "@/app/(portal)/marketing/design/form/actions";
 import { cn } from "@/lib/utils";
@@ -11,14 +11,14 @@ const OPTIONS = [
   {
     variant: "basic" as const,
     label: "Basic form",
-    hint: "Public link and QR, no expiry",
+    hint: "Same builder as the system QR lead form — fields, copy, and thank-you page.",
     icon: FileText,
   },
   {
-    variant: "exp" as const,
-    label: "Exp form",
-    hint: "Public link and QR, expires in 30 days",
-    icon: CalendarClock,
+    variant: "digital" as const,
+    label: "Form Digital",
+    hint: "Public share link, optional expiry, and QR with the Aeris mark.",
+    icon: QrCode,
   },
 ];
 
@@ -26,7 +26,7 @@ export function NewFormTemplateMenu() {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [pending, setPending] = useState<"basic" | "exp" | null>(null);
+  const [pending, setPending] = useState<"basic" | "digital" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export function NewFormTemplateMenu() {
     };
   }, [open]);
 
-  async function create(variant: "basic" | "exp") {
+  async function create(variant: "basic" | "digital") {
     if (pending) return;
     setError(null);
     setPending(variant);
@@ -75,7 +75,7 @@ export function NewFormTemplateMenu() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-30 mt-1.5 w-72 overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-[0_12px_40px_rgba(45,43,42,0.12)]"
+          className="absolute right-0 z-30 mt-1.5 w-80 overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-[0_12px_40px_rgba(45,43,42,0.12)]"
         >
           {OPTIONS.map((opt) => {
             const Icon = opt.icon;
@@ -107,7 +107,7 @@ export function NewFormTemplateMenu() {
         </div>
       ) : null}
       {error ? (
-        <p className="absolute right-0 mt-1 max-w-72 text-right text-[11px] text-danger">
+        <p className="absolute right-0 mt-1 max-w-80 text-right text-[11px] text-danger">
           {error}
         </p>
       ) : null}

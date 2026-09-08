@@ -62,23 +62,25 @@ export default async function FormTemplatesListPage() {
                     <p className="text-xs text-muted">
                       {QR_LEAD_FUNNEL.label} — form, thank-you, and welcome email
                     </p>
-                  ) : (
+                  ) : t.publicSlug ? (
                     <p className="text-xs text-muted">
-                      {t.publicSlug
-                        ? digitalFormPath(t.publicSlug)
-                        : "Save to generate a public link"}
+                      {digitalFormPath(t.publicSlug)}
                       {t.expiresAt
                         ? ` · expires ${jakartaDateFromIso(t.expiresAt)}`
                         : " · no expiry"}
                       {t.isPublished ? "" : " · unpublished"}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted">
+                      Form and thank-you page
                     </p>
                   )}
                 </td>
                 <td className="px-4 py-3 text-muted">
                   {t.kind === "system"
                     ? "System"
-                    : t.expiresAt
-                      ? "Exp"
+                    : t.publicSlug
+                      ? "Form Digital"
                       : "Basic"}
                 </td>
                 <td className="px-4 py-3 text-muted">{t.fields.length}</td>
