@@ -958,6 +958,11 @@ export function mapCustomer(r: any): Customer {
       typeof r.lead_discount_code === "string" && r.lead_discount_code.trim()
         ? r.lead_discount_code.trim()
         : null,
+    digitalDiscountCode:
+      typeof r.digital_discount_code === "string" &&
+      r.digital_discount_code.trim()
+        ? r.digital_discount_code.trim()
+        : null,
     createdAt: r.created_at,
   };
 }

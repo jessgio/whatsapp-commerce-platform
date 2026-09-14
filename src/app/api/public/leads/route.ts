@@ -9,7 +9,7 @@ import { isDigitalForm, isFormExpired, isPublicSlug } from "@/lib/digital-form";
 import { sendLeadWelcomeEmail } from "@/lib/email";
 import { isSupabaseConfigured } from "@/lib/env";
 import { newEditToken } from "@/lib/lead-edit";
-import { resolveStickyLeadDiscountCode } from "@/lib/lead-offer";
+import { resolvePlatformDiscountCodes } from "@/lib/lead-offer";
 import { parseLeadSubmission } from "@/lib/lead-form-submit";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
@@ -68,6 +68,7 @@ type ExistingLeadRow = {
   edit_token?: string | null;
   form_answers?: unknown;
   lead_discount_code?: string | null;
+  digital_discount_code?: string | null;
 };
 
 function upsertDemoLead(data: {
@@ -90,13 +91,17 @@ function upsertDemoLead(data: {
       (c.email && c.email.toLowerCase() === emailLower),
   );
 
+  const platform = data.leadTag === TAG_FORM_DIGITAL ? "digital" : "physical";
+
   if (existingIdx >= 0) {
     const prev = DEMO_CUSTOMERS[existingIdx];
     const tags = stampLeadTag(prev.tags, data.leadTag);
     const editToken = prev.editToken || newEditToken();
-    const discountCode = resolveStickyLeadDiscountCode({
+    const offer = resolvePlatformDiscountCodes({
+      platform,
       templateCode: data.templateDiscountCode,
-      storedCode: prev.leadDiscountCode,
+      physicalCode: prev.leadDiscountCode,
+      digitalCode: prev.digitalDiscountCode,
     });
     DEMO_CUSTOMERS[existingIdx] = {
       ...prev,
@@ -113,14 +118,22 @@ function upsertDemoLead(data: {
       tags,
       editToken,
       formAnswers: data.formAnswers,
-      leadDiscountCode: prev.leadDiscountCode?.trim() || discountCode,
+      leadDiscountCode: offer.physicalCode,
+      digitalDiscountCode: offer.digitalCode,
     };
-    return { id: prev.id, created: false, editToken, discountCode };
+    return {
+      id: prev.id,
+      created: false,
+      editToken,
+      discountCode: offer.issuedCode,
+    };
   }
 
-  const discountCode = resolveStickyLeadDiscountCode({
+  const offer = resolvePlatformDiscountCodes({
+    platform,
     templateCode: data.templateDiscountCode,
-    storedCode: null,
+    physicalCode: null,
+    digitalCode: null,
   });
   const editToken = newEditToken();
   const customer: Customer = {
@@ -143,11 +156,12 @@ function upsertDemoLead(data: {
     termsVersion: TERMS_VERSION,
     editToken,
     formAnswers: data.formAnswers,
-    leadDiscountCode: discountCode,
+    leadDiscountCode: offer.physicalCode,
+    digitalDiscountCode: offer.digitalCode,
     createdAt: now,
   };
   DEMO_CUSTOMERS.unshift(customer);
-  return { id: customer.id, created: true, editToken, discountCode };
+    return { id: customer.id, created: true, editToken, discountCode: offer.issuedCode };
 }
 
 export async function POST(req: NextRequest) {
@@ -221,7 +235,7 @@ export async function POST(req: NextRequest) {
 
   const supabase = createSupabaseAdminClient();
   const existingSelect =
-    "id, tags, edit_token, form_answers, lead_discount_code";
+    "id, tags, edit_token, form_answers, lead_discount_code, digital_discount_code";
 
   const { data: byWa } = await supabase
     .from("customers")
@@ -252,14 +266,13 @@ export async function POST(req: NextRequest) {
   const editToken =
     (existing?.edit_token as string | null | undefined) || newEditToken();
 
-  const discountCode = resolveStickyLeadDiscountCode({
+  const offer = resolvePlatformDiscountCodes({
+    platform: leadTag === TAG_FORM_DIGITAL ? "digital" : "physical",
     templateCode: templateDiscountCode,
-    storedCode: existing?.lead_discount_code,
+    physicalCode: existing?.lead_discount_code,
+    digitalCode: existing?.digital_discount_code,
   });
-
-  // Assign once — never overwrite an earlier voucher on re-signup.
-  const leadDiscountToStore =
-    existing?.lead_discount_code?.trim() || discountCode;
+  const discountCode = offer.issuedCode;
 
   const prevAnswers =
     existing?.form_answers &&
@@ -281,7 +294,8 @@ export async function POST(req: NextRequest) {
     terms_version: TERMS_VERSION,
     edit_token: editToken,
     form_answers: { ...prevAnswers, ...formAnswers },
-    lead_discount_code: leadDiscountToStore,
+    lead_discount_code: offer.physicalCode,
+    digital_discount_code: offer.digitalCode,
   };
 
   let customerId: string;
@@ -309,7 +323,8 @@ export async function POST(req: NextRequest) {
             terms_version: payload.terms_version,
             edit_token: editToken,
             form_answers: payload.form_answers,
-            lead_discount_code: leadDiscountToStore,
+            lead_discount_code: payload.lead_discount_code,
+            digital_discount_code: payload.digital_discount_code,
             tags,
           }
         : { ...payload, tags };

@@ -211,10 +211,29 @@ export function CustomerTable({
                 {signup ? formatDateTime(signup) : "—"}
               </Td>
               <Td className="text-sm">
-                {c.leadDiscountCode ? (
-                  <span className="font-mono text-xs tracking-wide text-foreground">
-                    {c.leadDiscountCode}
-                  </span>
+                {c.leadDiscountCode || c.digitalDiscountCode ? (
+                  <div className="space-y-0.5">
+                    {c.leadDiscountCode ? (
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wide text-muted">
+                          Fisik{" "}
+                        </span>
+                        <span className="font-mono text-xs tracking-wide text-foreground">
+                          {c.leadDiscountCode}
+                        </span>
+                      </div>
+                    ) : null}
+                    {c.digitalDiscountCode ? (
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wide text-muted">
+                          Digital{" "}
+                        </span>
+                        <span className="font-mono text-xs tracking-wide text-foreground">
+                          {c.digitalDiscountCode}
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
                 ) : (
                   <span className="text-muted">—</span>
                 )}

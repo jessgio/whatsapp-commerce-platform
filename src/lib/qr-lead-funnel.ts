@@ -15,7 +15,7 @@ export const QR_LEAD_FUNNEL = {
   shortDescription:
     "Form, thank-you page, and welcome email sent after someone joins via QR.",
   discountSourceHint:
-    "Source of truth for thank-you + welcome email. Returning leads keep their first issued code.",
+    "Fisik card code. Same phone keeps the first fisik code after you rotate it. Form Digital issues a separate digital code.",
   funnelBanner:
     "This QR lead funnel powers /daftar, the thank-you page, and the automatic welcome email. Edit the discount code only on the Form tab.",
   welcomeBanner:

@@ -195,7 +195,11 @@ export function FormInspector({
           </InspectorField>
           <InspectorField
             label="Discount code"
-            hint={QR_LEAD_FUNNEL.discountSourceHint}
+            hint={
+              isDigital
+                ? "Digital voucher. Same phone keeps the first digital code. Fisik card codes stay separate."
+                : QR_LEAD_FUNNEL.discountSourceHint
+            }
           >
             <input
               className={editorFieldClass}

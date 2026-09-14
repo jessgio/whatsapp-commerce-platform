@@ -114,7 +114,9 @@ Staff list: **Customers**. Import Excel from **Import contacts**; template at `/
 
 Filter the list with **All sources / Internal / Voucher / Form Digital**. Extra labels from the Excel `tags` column (e.g. `vip`) show next to the source chip. Matching is by phone (`wa_id`); existing rows are updated and also stamped Internal. Someone who was imported and later submitted `/daftar` shows both chips.
 
-**Form Digital** (Design → Form templates) is a fully custom copy of the QR lead form for social media. Each library template gets a unique public slug (`/f/fd…`), optional link expiry (end of that day, Asia/Jakarta), and a downloadable QR with `aeris-mark-512.png` in the center. Unpublished or expired links reject both GET and POST. The system QR funnel on `/daftar` is unchanged.
+**Form Digital** (Design → Form templates) is a fully custom copy of the QR lead form for social media. Each library template gets a unique public slug (`/f/fd…`), optional link expiry (end of that day, Asia/Jakarta), and a downloadable QR with `aeris-mark-512.png` in the center. Unpublished or expired links reject both GET and POST. The system QR funnel on `/daftar` is the **fisik** card.
+
+Vouchers are sticky **per phone, per platform**: fisik (`/daftar`) and digital (`/f/[slug]`) each issue at most one code. Someone who already claimed a fisik card can still scan a digital QR and receive a separate digital code. Re-submitting the same platform always returns the first code issued there, so rotating the fisik card code does not give returning numbers a new voucher.
 
 ## Cloudflare Turnstile
 

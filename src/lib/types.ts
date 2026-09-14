@@ -33,8 +33,10 @@ export interface Customer {
   editToken?: string | null;
   /** Custom QR form answers keyed by custom_* field keys. */
   formAnswers?: Record<string, string | boolean | number | null>;
-  /** First QR lead voucher code issued to this customer (sticky). */
+  /** First fisik (system /daftar) voucher for this phone (sticky). */
   leadDiscountCode?: string | null;
+  /** First Form Digital voucher for this phone (sticky). */
+  digitalDiscountCode?: string | null;
   createdAt: string;
 }
 
