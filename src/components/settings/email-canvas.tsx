@@ -68,7 +68,7 @@ const SelectableBlock = React.memo(function SelectableBlock({
       onSelect={onSelect}
     >
       {isBlockEmpty(block, variant) ? (
-        <div className="m-3 rounded-lg border border-dashed border-merlot/30 bg-merlot/[0.03] px-3 py-5 text-center text-[11px] font-medium text-muted">
+        <div className="rounded-lg border border-dashed border-merlot/30 bg-merlot/[0.03] px-3 py-5 text-center text-[11px] font-medium text-muted">
           Empty {label.toLowerCase()}
         </div>
       ) : variant === "web" ? (
@@ -146,8 +146,10 @@ export const EmailCanvas = React.memo(function EmailCanvas({
   }
 
   return (
-    <div className="overflow-hidden rounded-[14px] border border-border shadow-[0_8px_28px_rgba(45,43,42,0.10)]">
-      <EmailFrame customFonts={customFonts}>{children}</EmailFrame>
+    <div className="rounded-[14px] border border-border shadow-[0_8px_28px_rgba(45,43,42,0.10)]">
+      <EmailFrame customFonts={customFonts} clip={false}>
+        {children}
+      </EmailFrame>
     </div>
   );
 });

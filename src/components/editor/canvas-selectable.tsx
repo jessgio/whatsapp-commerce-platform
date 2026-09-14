@@ -38,7 +38,7 @@ export function CanvasSelectable({
         }
       }}
       className={cn(
-        "group relative block w-full cursor-pointer text-left outline-none",
+        "group relative block w-full cursor-pointer p-3 text-left outline-none",
         className,
       )}
     >
@@ -47,7 +47,7 @@ export function CanvasSelectable({
       <span
         aria-hidden
         className={cn(
-          "pointer-events-none absolute inset-0 rounded-[3px] ring-inset transition-shadow",
+          "pointer-events-none absolute inset-0 rounded-xl ring-inset transition-shadow",
           selected
             ? "ring-2 ring-merlot"
             : "ring-1 ring-transparent group-hover:ring-merlot/40 group-focus-visible:ring-2 group-focus-visible:ring-merlot/60",
@@ -58,7 +58,7 @@ export function CanvasSelectable({
       {selected ? (
         <span
           aria-hidden
-          className="pointer-events-none absolute right-0 top-0 z-10 rounded-bl-md bg-merlot px-1.5 py-0.5 text-[10px] font-medium leading-none text-white"
+          className="pointer-events-none absolute right-0 top-0 z-10 rounded-bl-md rounded-tr-xl bg-merlot px-1.5 py-0.5 text-[10px] font-medium leading-none text-white"
         >
           {label}
         </span>

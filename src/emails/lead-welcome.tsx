@@ -467,9 +467,13 @@ export const EmailBlockView = React.memo(function EmailBlockView({
 /** Cream page padding plus the white email card. Shared with the editor canvas. */
 export function EmailFrame({
   customFonts = [],
+  clip = true,
   children,
 }: {
   customFonts?: EmailCustomFont[];
+  /** Sent mail clips to the card radius. Editor leaves overflow visible so
+   *  the shared selection ring can stay rounded. */
+  clip?: boolean;
   children: React.ReactNode;
 }) {
   const fontFaceCss = buildFontFaceCss(customFonts);
@@ -490,7 +494,7 @@ export function EmailFrame({
           backgroundColor: base.surface,
           borderRadius: 16,
           border: `1px solid ${base.border}`,
-          overflow: "hidden",
+          overflow: clip ? "hidden" : "visible",
         }}
       >
         {children}

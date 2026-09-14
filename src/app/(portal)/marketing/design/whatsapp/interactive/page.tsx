@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import { requirePermission } from "@/lib/guard";
 import { can } from "@/lib/rbac";
 import { listWaInteractiveDesigns } from "@/lib/data/whatsapp-designs";
@@ -12,6 +12,13 @@ export default async function WaInteractiveListPage() {
 
   return (
     <div>
+      <div className="mb-3">
+        <Link href="/marketing/design" className="inline-flex">
+          <Button variant="secondary" className="h-8 px-2.5 text-xs">
+            <ArrowLeft size={14} /> Back to design
+          </Button>
+        </Link>
+      </div>
       <PageHeader
         title="WhatsApp interactive"
         subtitle="Session messages for the 24-hour customer care window"
@@ -25,12 +32,6 @@ export default async function WaInteractiveListPage() {
           ) : undefined
         }
       />
-
-      <div className="mb-4 text-sm">
-        <Link href="/marketing/design" className="text-merlot hover:underline">
-          ← Back to marketing design
-        </Link>
-      </div>
 
       {designs.length === 0 ? (
         <div className="rounded-[16px] border border-dashed border-border bg-surface px-6 py-12 text-center">

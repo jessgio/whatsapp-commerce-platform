@@ -369,7 +369,7 @@ export function ThankYouFrame({ children }: { children: React.ReactNode }) {
     <div className="relative overflow-hidden rounded-[14px] bg-[#2a1a14] p-4">
       <div className="pointer-events-none absolute inset-0 bg-black/20" />
       <div className="relative">
-        <div className="w-full rounded-[20px] border border-border bg-surface p-8 text-center shadow-[0_16px_48px_rgba(0,0,0,0.35)]">
+        <div className="w-full overflow-visible rounded-[20px] border border-border bg-surface p-6 text-center shadow-[0_16px_48px_rgba(0,0,0,0.35)]">
           {children}
         </div>
       </div>

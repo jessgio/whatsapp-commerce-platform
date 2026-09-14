@@ -2,7 +2,8 @@ import Link from "next/link";
 import { requirePermission } from "@/lib/guard";
 import { can } from "@/lib/rbac";
 import { listEmailFonts } from "@/lib/data/email-fonts";
-import { PageHeader } from "@/components/ui";
+import { Button, PageHeader } from "@/components/ui";
+import { ArrowLeft } from "lucide-react";
 import { EmailFontsManager } from "@/components/marketing/email-fonts-manager";
 
 export default async function EmailFontsPage() {
@@ -11,12 +12,11 @@ export default async function EmailFontsPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <Link
-          href="/marketing/design/email"
-          className="text-sm text-muted hover:text-foreground"
-        >
-          ← Back to email templates
+      <div className="space-y-3">
+        <Link href="/marketing/design/email" className="inline-flex">
+          <Button variant="secondary" className="h-8 px-2.5 text-xs">
+            <ArrowLeft size={14} /> Back to email templates
+          </Button>
         </Link>
         <PageHeader
           title="Brand fonts"
