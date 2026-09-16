@@ -7,6 +7,7 @@ import { listSegmentDefinitions } from "@/lib/data/segments";
 import { Button, PageHeader } from "@/components/ui";
 import { CustomerTable } from "@/components/customers/customer-table";
 import { ImportContactsButton } from "@/components/customers/import-contacts";
+import { ExportContactsButton } from "@/components/customers/export-contacts";
 
 export default async function CustomersPage() {
   const user = await requirePermission("customers.view");
@@ -30,6 +31,7 @@ export default async function CustomersPage() {
                 <Layers size={15} /> Segments
               </Button>
             </Link>
+            {canSeePii ? <ExportContactsButton /> : null}
             {canEdit ? <ImportContactsButton /> : null}
           </>
         }

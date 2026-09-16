@@ -104,7 +104,7 @@ node scripts/smoke-staff-api.mjs   # API smoke (needs STAFF_API_ALLOW_DEMO or de
 
 ## Customers
 
-Staff list: **Customers**. Import Excel from **Import contacts**; template at `/customers/import-template`.
+Staff list: **Customers**. Import Excel from **Import contacts**; template at `/customers/import-template`. Export a snapshot with **Export contacts** (`/customers/export`, optional `?source=internal|voucher|form_digital`) — same name/phone/email/city/birth_date/tags columns as import, plus source and voucher codes. Requires PII access.
 
 | Source | How they get in | Tag (DB) | UI chip | Consent |
 | --- | --- | --- | --- | --- |
