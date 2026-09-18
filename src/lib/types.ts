@@ -20,7 +20,7 @@ export interface Customer {
   city: string | null;
   birthDate: string | null; // YYYY-MM-DD
   consentStatus: ConsentStatus;
-  consentChannel: ConsentChannel;
+  consentChannel: ConsentChannel | null;
   segments: string[];
   tags: string[];
   lifetimeValue: number;

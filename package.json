@@ -2,11 +2,16 @@
   "name": "whatsapp-commerce-platform",
   "version": "0.1.0",
   "private": true,
+  "workspaces": ["apps/*"],
   "scripts": {
-    "dev": "node --max-http-header-size=131072 ./node_modules/next/dist/bin/next dev",
-    "build": "next build",
+    "dev": "concurrently -n web,api -c cyan,magenta --kill-others-on-fail false \"npm run dev:web\" \"npm run dev:api\"",
+    "dev:web": "node --max-http-header-size=131072 ./node_modules/next/dist/bin/next dev",
+    "dev:api": "npm run start:dev -w @merlot/api",
+    "build": "node --max-http-header-size=131072 ./node_modules/next/dist/bin/next build",
+    "build:api": "npm run build -w @merlot/api",
     "start": "node --max-http-header-size=131072 ./node_modules/next/dist/bin/next start",
-    "lint": "eslint",
+    "start:api": "npm run start -w @merlot/api",
+    "lint": "node ./node_modules/eslint/bin/eslint.js",
     "mobile": "npm --prefix mobile start",
     "mobile:typecheck": "tsc -p mobile/tsconfig.json --noEmit",
     "biteship:test-orders": "node scripts/create-biteship-test-orders.mjs",
@@ -43,6 +48,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "concurrently": "^9.2.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

@@ -20,6 +20,7 @@ import {
   demoMessages,
 } from "@/lib/demo/data";
 import { mergeImportedCustomerTags } from "@/lib/customers/source";
+import { listCustomersFromApi } from "@/lib/backend";
 import type {
   Address,
   AppUser,
@@ -95,6 +96,9 @@ const PAGE_SIZE = 1000;
 /* ---------- Customers ---------- */
 
 export async function listCustomers(): Promise<Customer[]> {
+  const fromApi = await listCustomersFromApi();
+  if (fromApi) return fromApi;
+
   if (shouldUseSupabaseData()) {
     const supabase = await createSupabaseServerClient();
     const collected: Customer[] = [];
@@ -938,8 +942,8 @@ export function mapCustomer(r: any): Customer {
     email: r.email,
     city: r.city,
     birthDate: r.birth_date ?? null,
-    consentStatus: r.consent_status,
-    consentChannel: r.consent_channel,
+    consentStatus: r.consent_status ?? "pending",
+    consentChannel: r.consent_channel ?? null,
     segments: r.segments ?? [],
     tags: r.tags ?? [],
     lifetimeValue: r.lifetime_value ?? 0,

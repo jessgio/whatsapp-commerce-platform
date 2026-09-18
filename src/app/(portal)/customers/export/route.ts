@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/guard";
 import { listCustomers } from "@/lib/data/repo";
+import { exportCustomersFromApi } from "@/lib/backend";
 import {
   buildCustomersExportXlsx,
   customerExportFilename,
@@ -17,6 +18,23 @@ function parseSource(raw: string | null): CustomerExportSource {
 export async function GET(req: NextRequest) {
   await requirePermission("customers.pii");
   const source = parseSource(req.nextUrl.searchParams.get("source"));
+
+  const fromApi = await exportCustomersFromApi(source);
+  if (fromApi) {
+    const filename =
+      fromApi.headers.get("content-disposition") ??
+      `attachment; filename="${customerExportFilename(source)}"`;
+    return new NextResponse(fromApi.body, {
+      headers: {
+        "Content-Type":
+          fromApi.headers.get("content-type") ??
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": filename,
+        "Cache-Control": "private, no-store",
+      },
+    });
+  }
+
   const customers = await listCustomers();
   const buffer = await buildCustomersExportXlsx(customers, source);
   const filename = customerExportFilename(source);

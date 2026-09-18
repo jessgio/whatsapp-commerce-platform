@@ -66,8 +66,11 @@ export function mergeImportedCustomerTags(
   return [...new Set([...(existing ?? []), ...extra, TAG_INTERNAL])];
 }
 
-export function consentChannelLabel(channel: ConsentChannel): string {
+export function consentChannelLabel(
+  channel: ConsentChannel | null | undefined,
+): string {
+  if (!channel) return "";
   if (channel === "import") return "Internal import";
   if (channel === "web_form") return "Voucher form";
-  return channel.replace(/_/g, " ");
+  return String(channel).replace(/_/g, " ");
 }
